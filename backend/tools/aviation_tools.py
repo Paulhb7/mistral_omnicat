@@ -1,9 +1,10 @@
+import httpx
 from strands import tool
-import requests
 from typing import List, Dict, Optional
 
+
 @tool
-def search_aircraft_in_area(
+async def search_aircraft_in_area(
     lat_min: float,
     lat_max: float,
     lon_min: float,
@@ -23,7 +24,6 @@ def search_aircraft_in_area(
         Liste d'avions avec leurs infos (ICAO, numéro de vol, position, altitude, vitesse).
     """
     if api_key:
-        # Utiliser OpenSky Network (plus précis mais nécessite une clé)
         url = "https://opensky-network.org/api/states/all"
         params = {
             "lamin": lat_min,
@@ -33,19 +33,19 @@ def search_aircraft_in_area(
         }
         headers = {"Authorization": f"Basic {api_key}"}
     else:
-        # Utiliser ADS-B Exchange (gratuit mais données brutes)
         url = "https://adsbexchange.com/api/aircraft/json"
         params = {
             "lat": (lat_min + lat_max) / 2,
             "lon": (lon_min + lon_max) / 2,
-            "radius": max((lat_max - lat_min) * 50, (lon_max - lon_min) * 50)  # Approximation
+            "radius": max((lat_max - lat_min) * 50, (lon_max - lon_min) * 50)
         }
+        headers = None
 
-    response = requests.get(url, params=params, headers=headers if api_key else None)
-    data = response.json()
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, params=params, headers=headers, timeout=15)
+        data = response.json()
 
     if api_key:
-        # Parser le format OpenSky
         aircrafts = []
         for state in data.get("states", []):
             aircrafts.append({
@@ -56,15 +56,15 @@ def search_aircraft_in_area(
                 "altitude": state[7],
                 "speed": state[9],
                 "track": state[10],
-                "type": "N/A"  # À enrichir avec une base de données
+                "type": "N/A"
             })
         return aircrafts
     else:
-        # Parser le format ADS-B Exchange
         return data.get("aircraft", [])
 
+
 @tool
-def get_aircraft_details(icao24: str, api_key: Optional[str] = None) -> Dict:
+async def get_aircraft_details(icao24: str, api_key: Optional[str] = None) -> Dict:
     """Récupère les détails d'un aéronef via son adresse ICAO24.
 
     Args:
@@ -75,17 +75,20 @@ def get_aircraft_details(icao24: str, api_key: Optional[str] = None) -> Dict:
         Détails de l'avion (type, compagnie, historique, etc.).
     """
     if api_key:
-        # OpenSky Network
-        url = f"https://opensky-network.org/api/aircraft/{icao24}"
-        headers = {"Authorization": f"Basic {api_key}"}
-        response = requests.get(url, headers=headers).json()
-        return response.get("aircraft", [])
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://opensky-network.org/api/aircraft/{icao24}",
+                headers={"Authorization": f"Basic {api_key}"},
+                timeout=15,
+            )
+            data = response.json()
+        return data.get("aircraft", [])
     else:
-        # Données statiques (ex: OurAirports ou base locale)
         return {"error": "API key required for detailed data"}
 
+
 @tool
-def check_aircraft_risk(icao24: str) -> Dict:
+async def check_aircraft_risk(icao24: str) -> Dict:
     """Vérifie si un aéronef est associé à des risques (sanctions, dark activity).
 
     Args:
@@ -94,8 +97,7 @@ def check_aircraft_risk(icao24: str) -> Dict:
     Returns:
         Score de risque et alertes (ex: sanctions, comportements suspects).
     """
-    # Exemple : Vérifier contre une liste de sanctions (à étendre)
-    sanctioned_aircrafts = ["ABC123", "DEF456"]  # Liste fictive
+    sanctioned_aircrafts = ["ABC123", "DEF456"]
     risk_score = 0
     alerts = []
 
@@ -103,20 +105,18 @@ def check_aircraft_risk(icao24: str) -> Dict:
         risk_score = 100
         alerts.append("Aéronef sous sanctions internationales.")
 
-    # Vérifier les comportements suspects (simplifié)
-    # En réalité, utiliser un historique via OpenSky ou une base locale
-    anomalies = detect_anomalies(icao24)  # Fonction à implémenter
+    anomalies = _detect_anomalies(icao24)
     if anomalies:
         risk_score += 30
         alerts.append(f"Comportements suspects détectés : {len(anomalies)} anomalies.")
 
     return {
         "icao24": icao24,
-        "risk_score": min(risk_score, 100),  # Score de 0 à 100
+        "risk_score": min(risk_score, 100),
         "alerts": alerts
     }
 
-def detect_anomalies(icao24: str) -> List[Dict]:
+
+def _detect_anomalies(icao24: str) -> List[Dict]:
     """Détecte les comportements suspects (simplifié)."""
-    # En production, utiliser un historique via OpenSky ou une base locale
-    return []  # À implémenter avec des données réelles
+    return []

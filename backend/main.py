@@ -1,11 +1,8 @@
 from dotenv import load_dotenv
-
-from agents.math_agent import create_math_agent
 from agents.maritime_agent import create_maritime_agent
 
 load_dotenv()
 
-# Choix de l'agent (par défaut : maritime)
 agent = create_maritime_agent()
 
 if __name__ == "__main__":

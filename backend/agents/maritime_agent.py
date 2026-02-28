@@ -1,7 +1,24 @@
+import os
+from pathlib import Path
+
 from strands import Agent
 from strands.models.bedrock import BedrockModel
-from tools.maritime_tools import search_vessels_in_area, get_vessel_details, check_vessel_risk
-import os
+
+from tools.maritime_tools import (
+    search_vessel,
+    track_vessel_position,
+    get_vessel_history,
+    monitor_area,
+    list_monitored_vessels,
+)
+from tools.geo_tools import geocode_location, get_weather
+
+PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
+
+
+def _load_prompt(name: str) -> str:
+    return (PROMPTS_DIR / f"{name}.md").read_text().strip()
+
 
 def create_maritime_agent() -> Agent:
     model = BedrockModel(
@@ -12,16 +29,14 @@ def create_maritime_agent() -> Agent:
 
     return Agent(
         model=model,
-        tools=[search_vessels_in_area, get_vessel_details, check_vessel_risk],
-        system_prompt="""
-        Tu es un assistant OSINT maritime. Tes tâches :
-        1. Rechercher les bateaux dans une zone géographique donnée.
-        2. Fournir des détails sur un navire spécifique (IMO, nom, type, pavillon).
-        3. Analyser les risques (sanctions, comportements suspects).
-        4. Résumer les informations de manière claire et sourcée.
-
-        Exemple de requête :
-        - "Quels bateaux sont près de Marseille (lat:43.3, lon:5.4, rayon 20km) ?"
-        - "Analyse le navire avec l'IMO 1234567."
-        """,
+        tools=[
+            geocode_location,
+            get_weather,
+            search_vessel,
+            track_vessel_position,
+            get_vessel_history,
+            monitor_area,
+            list_monitored_vessels,
+        ],
+        system_prompt=_load_prompt("maritime_agent"),
     )

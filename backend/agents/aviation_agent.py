@@ -1,6 +1,7 @@
 from strands import Agent
 from strands.models.bedrock import BedrockModel
 from tools.aviation_tools import search_aircraft_in_area, get_aircraft_details, check_aircraft_risk
+from tools.geo_tools import geocode_location, get_weather
 import os
 
 def create_aviation_agent() -> Agent:
@@ -12,7 +13,7 @@ def create_aviation_agent() -> Agent:
 
     return Agent(
         model=model,
-        tools=[search_aircraft_in_area, get_aircraft_details, check_aircraft_risk],
+        tools=[geocode_location, get_weather, search_aircraft_in_area, get_aircraft_details, check_aircraft_risk],
         system_prompt="""
         Tu es un assistant OSINT aérien. Tes tâches :
         1. Rechercher les avions dans une zone géographique donnée.

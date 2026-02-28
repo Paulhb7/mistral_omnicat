@@ -1,5 +1,7 @@
 strands-agents
 boto3
 python-dotenv
-strands-agents-tools 
+strands-agents-tools
 strands-agents-builder
+websockets
+httpx
