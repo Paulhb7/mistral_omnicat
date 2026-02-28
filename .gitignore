@@ -8,3 +8,5 @@ dist/
 .claude
 .vibe
 maritime_data.db
+.next
+node_modules/
