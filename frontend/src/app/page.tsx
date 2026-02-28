@@ -100,7 +100,7 @@ export default function Home() {
         </div>
 
         {/* Radar — centered behind heading */}
-        <div style={{ position: "absolute", zIndex: 0, pointerEvents: "none", opacity: 0.1 }}>
+        <div style={{ position: "absolute", zIndex: 0, pointerEvents: "none", opacity: 0.28 }}>
           <svg width="500" height="500" viewBox="0 0 600 600">
             <circle cx="300" cy="300" r="100" fill="none" stroke="#fa500f" strokeWidth="0.5" />
             <circle cx="300" cy="300" r="200" fill="none" stroke="#fa500f" strokeWidth="0.5" />

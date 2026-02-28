@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from agents.orchestrator import run_orchestrator
+from agents.orchestrator import stream_orchestrator
 
 load_dotenv()
 
@@ -62,8 +62,8 @@ async def stream_endpoint(request: ChatRequest):
 
     async def generate():
         try:
-            result = await run_orchestrator(request.message, request.session_id)
-            yield _sse({"type": "content", "data": result})
+            async for chunk in stream_orchestrator(request.message, request.session_id):
+                yield _sse({"type": "content", "data": chunk})
             yield "data: [DONE]\n\n"
 
         except Exception as e:

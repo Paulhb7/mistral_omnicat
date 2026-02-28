@@ -44,7 +44,7 @@ def _get_orchestrator_agent(session_id: str) -> Agent:
     model = BedrockModel(
         model_id=os.getenv("ORCHESTRATOR_MODEL_ID", "mistral.mistral-large-3-675b-instruct"),
         region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
-        streaming=False,
+        streaming=True,
     )
     session_manager = FileSessionManager(
         session_id=session_id,
@@ -63,28 +63,18 @@ def _get_orchestrator_agent(session_id: str) -> Agent:
         ],
         system_prompt=_load_prompt("orchestrator_agent"),
         session_manager=session_manager,
+        callback_handler=None,
     )
 
 
-async def _run_agent(agent: Agent, query: str) -> str:
-    """Run an agent in a separate thread to avoid blocking the event loop."""
-    try:
-        result = await asyncio.to_thread(agent, query)
-        return str(result)
-    except Exception as e:
-        return f"[Error] {e}"
-
-
-async def run_orchestrator(user_query: str, session_id: str) -> str:
+async def stream_orchestrator(user_query: str, session_id: str):
     """
-    Main entry point.
-
-    The orchestrator agent decides which specialists to call,
-    chains calls as needed, and produces a cross-enriched briefing.
+    Main entry point — async generator that yields text chunks as they arrive.
     """
     orchestrator = _get_orchestrator_agent(session_id)
-    result = await _run_agent(orchestrator, user_query)
-    return result
+    async for event in orchestrator.stream_async(user_query):
+        if "data" in event:
+            yield event["data"]
 
 
 def _format_briefing(query: str, results: dict[str, str]) -> str:
