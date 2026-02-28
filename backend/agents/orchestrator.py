@@ -16,12 +16,13 @@ from strands.models.bedrock import BedrockModel
 from tools.geo_tools import geocode_location, get_weather
 from agents.maritime_agent import create_maritime_agent
 from agents.aviation_agent import create_aviation_agent
+from agents.doomsday_agent import create_doomsday_agent
 
 
 async def _run_agent(agent: Agent, query: str) -> str:
-    """Lance un agent et capture sa réponse."""
+    """Lance un agent dans un thread séparé pour ne pas bloquer le event loop."""
     try:
-        result = agent(query)
+        result = await asyncio.to_thread(agent, query)
         return str(result)
     except Exception as e:
         return f"[Erreur] {e}"
@@ -44,10 +45,12 @@ async def run_orchestrator(user_query: str) -> str:
         print(f"[Orchestrateur] Géocodage échoué, dispatch direct aux agents")
         maritime_agent = create_maritime_agent()
         aviation_agent = create_aviation_agent()
+        doomsday_agent = create_doomsday_agent()
 
-        maritime_result, aviation_result = await asyncio.gather(
+        maritime_result, aviation_result, doomsday_result = await asyncio.gather(
             _run_agent(maritime_agent, user_query),
             _run_agent(aviation_agent, user_query),
+            _run_agent(doomsday_agent, user_query),
         )
 
         return _format_briefing(
@@ -56,6 +59,7 @@ async def run_orchestrator(user_query: str) -> str:
             weather=None,
             maritime=maritime_result,
             aviation=aviation_result,
+            doomsday=doomsday_result,
         )
 
     lat, lng = geo["lat"], geo["lng"]
@@ -75,13 +79,20 @@ async def run_orchestrator(user_query: str) -> str:
         f"lon_min={lng - bbox_offset}, lon_max={lng + bbox_offset})."
     )
 
+    doomsday_query = (
+        f"Analyse les risques naturels et securitaires autour de {location_name} "
+        f"(lat={lat}, lng={lng}, pays={geo.get('country', '')})."
+    )
+
     maritime_agent = create_maritime_agent()
     aviation_agent = create_aviation_agent()
+    doomsday_agent = create_doomsday_agent()
 
-    weather_result, maritime_result, aviation_result = await asyncio.gather(
+    weather_result, maritime_result, aviation_result, doomsday_result = await asyncio.gather(
         get_weather.tool_func(lat=lat, lng=lng),
         _run_agent(maritime_agent, maritime_query),
         _run_agent(aviation_agent, aviation_query),
+        _run_agent(doomsday_agent, doomsday_query),
     )
 
     return _format_briefing(
@@ -90,10 +101,11 @@ async def run_orchestrator(user_query: str) -> str:
         weather=weather_result,
         maritime=maritime_result,
         aviation=aviation_result,
+        doomsday=doomsday_result,
     )
 
 
-def _format_briefing(query, geo, weather, maritime, aviation) -> str:
+def _format_briefing(query, geo, weather, maritime, aviation, doomsday=None) -> str:
     """Formate le briefing final."""
     lines = []
     lines.append("=" * 60)
@@ -119,6 +131,12 @@ def _format_briefing(query, geo, weather, maritime, aviation) -> str:
     lines.append("✈️  AVIATION")
     lines.append(f"{'─' * 60}")
     lines.append(aviation)
+
+    if doomsday:
+        lines.append(f"\n{'─' * 60}")
+        lines.append("💀 DOOMSDAY — RISQUES & MENACES")
+        lines.append(f"{'─' * 60}")
+        lines.append(doomsday)
 
     lines.append(f"\n{'=' * 60}")
     return "\n".join(lines)
