@@ -1,34 +1,42 @@
 # OmniCAT — Multi-Agent OSINT Intelligence
 
-OSINT (Open Source Intelligence) analysis system for maritime, aerial, geopolitical and space weather surveillance.
+OSINT (Open Source Intelligence) analysis system for maritime, aerial, geopolitical and space weather surveillance, powered by Mistral AI agents.
 
 ## Architecture
 
 ```
-┌───────────────────────────────────────────────────────────────┐
-│                       ORCHESTRATOR                            │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌─────┐ │
-│  │ Maritime │ │ Aviation │ │ Doomsday │ │ Conflict │ │Solar│ │
-│  │ Agent    │ │ Agent    │ │ Agent    │ │ Agent    │ │Agent│ │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └─────┘ │
-│       │            │            │            │           │     │
-└───────┼────────────┼────────────┼────────────┼───────────┼─────┘
-        │            │            │            │           │
-┌───────▼────────────▼────────────▼────────────▼───────────▼─────┐
-│                        TOOLS LAYER                             │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
-│  │ Geo Tools   │  │ Aviation    │  │ Maritime    │            │
-│  │ (Nominatim) │  │ (OpenSky)   │  │ (AISStream) │            │
-│  └─────────────┘  └─────────────┘  └─────────────┘            │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
-│  │ Weather     │  │ Doomsday    │  │ Conflict    │            │
-│  │ (Open-Meteo)│  │ (NASA/USGS) │  │ (ACLED/GDELT│            │
-│  └─────────────┘  └─────────────┘  └─────────────┘            │
-│  ┌─────────────┐                                               │
-│  │ Solar       │                                               │
-│  │ (NASA DONKI)│                                               │
-│  └─────────────┘                                               │
-└────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     NEXT.JS FRONTEND                            │
+│          (Leaflet Map / Briefing Panel / SSE Client)            │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ SSE /stream
+┌──────────────────────────▼──────────────────────────────────────┐
+│                     FASTAPI SERVER                              │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────────┐
+│                       ORCHESTRATOR                               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────┐ │
+│  │ Maritime │ │ Aviation │ │ Doomsday │ │ Conflict │ │ Solar │ │
+│  │ Agent    │ │ Agent    │ │ Agent    │ │ Agent    │ │ Agent │ │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬───┘ │
+└───────┼────────────┼────────────┼────────────┼────────────┼─────┘
+        │            │            │            │            │
+┌───────▼────────────▼────────────▼────────────▼────────────▼─────┐
+│                        TOOLS LAYER                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ Geo Tools   │  │ Aviation    │  │ Maritime    │              │
+│  │ (Nominatim) │  │ (OpenSky)   │  │ (AISStream) │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ Weather     │  │ Doomsday    │  │ Conflict    │              │
+│  │ (Open-Meteo)│  │ (NASA/USGS) │  │ (ACLED/GDELT│              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│  ┌─────────────┐                                                 │
+│  │ Solar       │                                                 │
+│  │ (NASA DONKI)│                                                 │
+│  └─────────────┘                                                 │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ## Features
@@ -62,37 +70,36 @@ OSINT (Open Source Intelligence) analysis system for maritime, aerial, geopoliti
 
 ### Prerequisites
 - Python 3.10+
+- Node.js 18+
 - AWS account with Bedrock access
-- AISStream API key (free via GitHub)
+- AISStream API key (free via [aisstream.io](https://aisstream.io))
 
 ### Steps
 
 1. Clone the repository:
 ```bash
 git clone https://github.com/Paulhb7/mistral_wwh_aristocats.git
-cd mistral_wwh_aristocats/backend
+cd mistral_wwh_aristocats
 ```
 
-2. Install dependencies:
+2. Configure the environment:
 ```bash
-pip install -r requirements.txt
-```
-
-3. Configure the environment:
-```bash
-cp ../.env.example .env
+cp .env.example .env
 # Edit .env with your API keys
 ```
 
-4. Start the backend:
+3. Install and start the backend:
 ```bash
-python server.py
+cd backend
+pip install -r requirements.txt
+python server.py  # http://localhost:8000
 ```
 
-5. Start the frontend:
+4. Install and start the frontend (in a separate terminal):
 ```bash
-cd ../frontend
-npm install && npm run dev
+cd frontend
+npm install
+npm run dev  # http://localhost:3000
 ```
 
 ## Usage
@@ -110,98 +117,101 @@ Open `http://localhost:3000` in your browser and enter a location or query.
 
 ### Environment Variables
 
-| Variable                  | Description              | Example                 |
-|---------------------------|--------------------------|-------------------------|
-| `AWS_BEARER_TOKEN_BEDROCK`| AWS Bedrock API key      | `api_key`               |
-| `AWS_DEFAULT_REGION`      | AWS region               | `us-east-2`             |
-| `AISSTREAM_API_KEY`       | AISStream API key        | `your_aisstream_key`    |
-| `ORCHESTRATOR_MODEL_ID`   | LLM model for routing    | `mistral.mistral-small-2402-v1:0` |
-| `AGENT_MODEL_ID`          | LLM model for agents     | `mistral.ministral-3-14b-instruct` |
-| `ACLED_API_KEY`           | ACLED API key (optional) | `your_acled_key`        |
-| `ACLED_EMAIL`             | ACLED email (optional)   | `your@email.com`        |
+| Variable                  | Description              | Default                                    |
+|---------------------------|--------------------------|--------------------------------------------|
+| `AWS_BEARER_TOKEN_BEDROCK`| AWS Bedrock API key      | *(required)*                               |
+| `AWS_DEFAULT_REGION`      | AWS region               | `us-east-2`                                |
+| `AISSTREAM_API_KEY`       | AISStream API key        | *(required)*                               |
+| `ORCHESTRATOR_MODEL_ID`   | LLM model for routing    | `mistral.mistral-large-3-675b-instruct`    |
+| `AGENT_MODEL_ID`          | LLM model for agents     | `mistral.ministral-3-14b-instruct`         |
+| `ACLED_API_KEY`           | ACLED API key (optional) |                                            |
+| `ACLED_EMAIL`             | ACLED email (optional)   |                                            |
 
-### .env file
-```
-AWS_BEARER_TOKEN_BEDROCK=api_key
-AWS_DEFAULT_REGION=us-east-2
-AISSTREAM_API_KEY=your_aisstream_key
-```
+## Tech Stack
 
-## Dependencies
+### Backend
+- **strands-agents** — Agent framework
+- **FastAPI** + **uvicorn** — API server
+- **boto3** — AWS Bedrock client (Mistral models)
+- **httpx** — Async HTTP client
+- **websockets** — AISStream WebSocket
+- **SQLite** — Maritime vessel history
 
-- `strands-agents` : Main agent framework
-- `boto3` : AWS client for Bedrock
-- `websockets` : WebSocket connection for AIS
-- `httpx` : Async HTTP requests
-- `python-dotenv` : Environment variable management
-- `fastapi` : Backend API server
-- `next` : Frontend framework
+### Frontend
+- **Next.js 15** + **React 19** — UI framework
+- **TypeScript** — Language
+- **Leaflet** — Interactive maps
+- **Tailwind CSS 4** — Styling
+- **react-markdown** — Briefing rendering
 
 ## Technical Architecture
 
 ### Agents
 
-1. **Orchestrator** (`agents/orchestrator.py`)
-   - Main entry point
-   - LLM-based query routing
-   - Parallel agent execution
-   - Briefing assembly
+| Agent | File | Role |
+|-------|------|------|
+| Orchestrator | `agents/orchestrator.py` | Query routing, briefing assembly |
+| Maritime | `agents/maritime_agent.py` | AIS surveillance, vessel tracking |
+| Aviation | `agents/aviation_agent.py` | Aircraft search, aerial risk analysis |
+| Doomsday | `agents/doomsday_agent.py` | Natural hazards, climate events, earthquakes |
+| Conflict | `agents/conflict_agent.py` | Armed conflicts, news monitoring |
+| Solar System | `agents/solar_system_agent.py` | Solar flares, space weather, NEOs |
 
-2. **Aviation Agent** (`agents/aviation_agent.py`)
-   - Aircraft search
-   - Aerial risk analysis
+Specialist agents are wrapped as `@tool` decorators in `agents/agent_tools.py`, allowing the orchestrator to invoke them as callable tools.
 
-3. **Maritime Agent** (`agents/maritime_agent.py`)
-   - AIS surveillance
-   - Vessel tracking
+### Streaming
 
-4. **Doomsday Agent** (`agents/doomsday_agent.py`)
-   - Natural hazard assessment
-   - Climate events & earthquakes
-
-5. **Conflict Agent** (`agents/conflict_agent.py`)
-   - Armed conflicts & political violence
-   - News monitoring
-
-6. **Solar System Agent** (`agents/solar_system_agent.py`)
-   - Solar flares & space weather
-   - Near-Earth object tracking
+The `/stream` endpoint uses Server-Sent Events (SSE). The orchestrator yields typed events (`content`, `tool_start`, `tool_end`, `agent_selected`, `location`, `data_*`) that the frontend consumes in real time.
 
 ### Tools
 
-- **Geo Tools** : Geocoding and weather
-- **Aviation Tools** : OpenSky Network, ADS-B Exchange
-- **Maritime Tools** : AISStream, SQLite database
-- **Doomsday Tools** : NASA EONET, USGS
-- **Conflict Tools** : ACLED, GDELT
-- **Solar Tools** : NASA DONKI, NASA NeoWs
+| Tool Module | APIs | Purpose |
+|-------------|------|---------|
+| `tools/geo_tools.py` | Nominatim, Open-Meteo | Geocoding, weather |
+| `tools/aviation_tools.py` | OpenSky Network, ADS-B Exchange | Aviation data |
+| `tools/maritime_tools.py` | AISStream, SQLite | Vessel tracking |
+| `tools/doomsday_tools.py` | NASA EONET, USGS | Climate events, earthquakes |
+| `tools/conflict_tools.py` | ACLED, GDELT | Conflicts, news |
+| `tools/solar_tools.py` | NASA DONKI, NASA NeoWs | Solar activity, asteroids |
 
-## Database
+## Development
 
-The system uses a SQLite database (`maritime_data.db`) to store:
-- Historical vessel positions
-- Monitored areas
-- Vessel metadata
+### File Structure
+```
+backend/
+├── agents/          # Specialist agents + orchestrator
+├── tools/           # API integrations + data bus
+├── prompts/         # System prompts for each agent
+├── tests/           # pytest unit & integration tests
+├── sessions/        # Persistent session storage
+├── server.py        # FastAPI server
+└── requirements.txt
 
-## External APIs
+frontend/
+├── src/app/         # Next.js App Router pages
+├── src/components/  # React components (map, briefing panel, etc.)
+├── src/hooks/       # Custom hooks (SSE streaming)
+└── package.json
+```
 
-| Service          | Usage                       | URL                          |
-|------------------|-----------------------------|------------------------------|
-| OpenStreetMap    | Geocoding                   | nominatim.openstreetmap.org  |
-| Open-Meteo       | Weather conditions          | api.open-meteo.com           |
-| OpenSky Network  | Aviation data               | opensky-network.org          |
-| ADS-B Exchange   | Aviation data (fallback)    | adsbexchange.com             |
-| AISStream        | Real-time AIS data          | aisstream.io                 |
-| NASA EONET       | Climate events              | eonet.sci.gsfc.nasa.gov      |
-| USGS             | Seismic data                | earthquake.usgs.gov          |
-| ACLED            | Conflict data (optional)    | acleddata.com                |
-| GDELT            | News monitoring             | gdeltproject.org             |
-| NASA DONKI       | Solar flares                | api.nasa.gov/DONKI           |
-| NASA NeoWs       | Near-Earth objects          | api.nasa.gov/neo             |
+### Adding a New Agent
+
+1. Create `agents/<name>_agent.py` with a strands `Agent`
+2. Define tools in `tools/<name>_tools.py`
+3. Write a system prompt in `prompts/<name>_agent.md`
+4. Wrap the agent as a `@tool` in `agents/agent_tools.py`
+5. Register it in the orchestrator's tool list
+
+### Tests
+
+```bash
+cd backend
+python -m pytest tests/
+```
 
 ## AI Model
 
-- **Model** : Mistral (Small / Ministral)
+- **Model** : Mistral Large (orchestrator) / Ministral (specialist agents)
 - **Provider** : AWS Bedrock
 - **Region** : us-east-2 (recommended)
 
@@ -212,70 +222,35 @@ The system uses a SQLite database (`maritime_data.db`) to store:
 BRIEFING OSINT
 ============================================================
 
-📍 Area: Marseille, France
+Area: Marseille, France
    Coordinates: 43.2965, 5.3698
 
-🌤️  Weather: Clear sky | 18°C | Wind 12 km/h | Humidity 65%
+Weather: Clear sky | 18C | Wind 12 km/h | Humidity 65%
 
-────────────────────────────────────────────────────────────
-🚢 MARITIME
-────────────────────────────────────────────────────────────
+------------------------------------------------------------
+MARITIME
+------------------------------------------------------------
 3 vessels detected in area:
 - CMA CGM MARSEILLE (MMSI: 228123456) - Under way at 12 knots
 - COSTA PACIFICA (MMSI: 247123456) - At anchor
-- LE BORÉAL (MMSI: 226123456) - Under way at 8 knots
+- LE BOREAL (MMSI: 226123456) - Under way at 8 knots
 
-────────────────────────────────────────────────────────────
-✈️  AVIATION
-────────────────────────────────────────────────────────────
+------------------------------------------------------------
+AVIATION
+------------------------------------------------------------
 2 aircraft detected:
 - AFR1234 (ICAO: 39A123) - Airbus A320, Altitude: 10000m
 - EJY5678 (ICAO: 401ABC) - Embraer E190, Altitude: 8000m
 
-────────────────────────────────────────────────────────────
-💀 DOOMSDAY — RISKS & THREATS
-────────────────────────────────────────────────────────────
+------------------------------------------------------------
+DOOMSDAY — RISKS & THREATS
+------------------------------------------------------------
 - NATURAL HAZARDS: No active events
 - SECURITY RISKS: No conflicts reported
 - THREAT LEVEL: NONE
 - ANALYST NOTE: Secure area, normal traffic
 
 ============================================================
-```
-
-## Development
-
-### File Structure
-```
-backend/
-├── agents/          # Specialized agents
-├── tools/           # Tools and API integrations
-├── prompts/         # Agent prompts
-├── server.py        # FastAPI server
-└── requirements.txt # Dependencies
-
-frontend/
-├── src/app/         # Next.js pages
-├── src/hooks/       # React hooks
-└── package.json     # Frontend dependencies
-```
-
-### Adding a New Agent
-
-1. Create a file in `agents/`
-2. Define the required tools in `tools/`
-3. Add a prompt in `prompts/`
-4. Integrate into the orchestrator
-
-### Tests
-
-Tests can be run with:
-```bash
-# Unit tests (to be implemented)
-python -m pytest tests/
-
-# Import verification
-python -c "from agents.orchestrator import run_orchestrator; print('OK')"
 ```
 
 ## License
