@@ -1,22 +1,59 @@
 """
 Orchestrateur — Route les requêtes vers les agents spécialistes.
 
-Fonctionnement :
-1. L'utilisateur pose une question (ex: "Analyse la zone de Marseille")
-2. L'orchestrateur utilise geocode_location pour résoudre le lieu
-3. Il lance les agents spécialistes en parallèle sur la zone
-4. Il synthétise les résultats en un briefing unifié
+Pattern old_v2 : un LLM routeur léger décide quel(s) agent(s) appeler,
+puis les spécialistes gèrent tout (geocodage, météo, etc.) via leurs propres tools.
 """
 import asyncio
 import os
+import re
 
 from strands import Agent
 from strands.models.bedrock import BedrockModel
 
-from tools.geo_tools import geocode_location, get_weather
 from agents.maritime_agent import create_maritime_agent
 from agents.aviation_agent import create_aviation_agent
 from agents.doomsday_agent import create_doomsday_agent
+
+
+_ROUTING_PROMPT = """Tu es un routeur de requêtes pour un système d'intelligence OSINT.
+
+En fonction du message de l'utilisateur, réponds avec UN OU PLUSIEURS mots parmi :
+- maritime   → bateaux, navires, ports, trafic maritime, MMSI, AIS
+- aviation   → avions, vols, aéroports, trafic aérien, ICAO
+- doomsday   → risques, menaces, séismes, climat, conflits, sécurité
+
+Règles :
+- Réponds UNIQUEMENT avec les mots séparés par des espaces. Pas d'explication.
+- Si la requête concerne plusieurs domaines ou est générique (ex: "analyse la zone de Marseille"), réponds : maritime aviation doomsday
+- Si tu ne sais pas, réponds : maritime aviation doomsday"""
+
+
+def _get_router_agent() -> Agent:
+    model = BedrockModel(
+        model_id="mistral.ministral-3-14b-instruct",
+        region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
+        streaming=False,
+    )
+    return Agent(
+        model=model,
+        system_prompt=_ROUTING_PROMPT,
+        callback_handler=None,
+    )
+
+
+def _parse_routing(text: str) -> list[str]:
+    """Extrait les noms d'agents depuis la réponse du routeur."""
+    valid = {"maritime", "aviation", "doomsday"}
+    found = [w for w in re.findall(r"\b(maritime|aviation|doomsday)\b", text.lower())]
+    return list(dict.fromkeys(found)) if found else list(valid)
+
+
+_SPECIALISTS = {
+    "maritime": create_maritime_agent,
+    "aviation": create_aviation_agent,
+    "doomsday": create_doomsday_agent,
+}
 
 
 async def _run_agent(agent: Agent, query: str) -> str:
@@ -30,113 +67,51 @@ async def _run_agent(agent: Agent, query: str) -> str:
 
 async def run_orchestrator(user_query: str) -> str:
     """
-    Point d'entrée principal de l'orchestrateur.
+    Point d'entrée principal.
 
-    1. Géocode le lieu mentionné dans la requête
-    2. Récupère la météo en parallèle
-    3. Lance les agents maritime et aviation en parallèle sur la zone
-    4. Synthétise tous les résultats
+    1. Le routeur LLM décide quel(s) agent(s) appeler
+    2. Les spécialistes sont lancés en parallèle
+    3. Les résultats sont assemblés en briefing
     """
-    # Étape 1 : Géocoder le lieu
-    geo = await geocode_location.tool_func(location=user_query)
-    if "error" in geo:
-        # Essayer d'extraire un nom de lieu de la requête
-        # Fallback : passer la requête telle quelle aux agents
-        print(f"[Orchestrateur] Géocodage échoué, dispatch direct aux agents")
-        maritime_agent = create_maritime_agent()
-        aviation_agent = create_aviation_agent()
-        doomsday_agent = create_doomsday_agent()
+    # Étape 1 : Routing
+    router = _get_router_agent()
+    routing_result = await asyncio.to_thread(router, user_query)
+    agents_to_call = _parse_routing(str(routing_result))
 
-        maritime_result, aviation_result, doomsday_result = await asyncio.gather(
-            _run_agent(maritime_agent, user_query),
-            _run_agent(aviation_agent, user_query),
-            _run_agent(doomsday_agent, user_query),
-        )
+    print(f"[Orchestrateur] Agents sélectionnés : {', '.join(agents_to_call)}")
 
-        return _format_briefing(
-            query=user_query,
-            geo=None,
-            weather=None,
-            maritime=maritime_result,
-            aviation=aviation_result,
-            doomsday=doomsday_result,
-        )
+    # Étape 2 : Lancer les spécialistes en parallèle
+    tasks = {}
+    for name in agents_to_call:
+        factory = _SPECIALISTS[name]
+        agent = factory()
+        tasks[name] = _run_agent(agent, user_query)
 
-    lat, lng = geo["lat"], geo["lng"]
-    location_name = geo["location"]
+    results = await asyncio.gather(*tasks.values())
+    agent_results = dict(zip(tasks.keys(), results))
 
-    # Étape 2 : Météo + agents spécialistes en parallèle
-    # Construire les requêtes spécialisées avec les coordonnées
-    bbox_offset = 0.2  # ~20km autour du point
-    maritime_query = (
-        f"Surveille la zone autour de {location_name} "
-        f"(bbox [{lat - bbox_offset}, {lng - bbox_offset}] à [{lat + bbox_offset}, {lng + bbox_offset}]). "
-        f"Liste les navires présents."
-    )
-    aviation_query = (
-        f"Recherche les avions dans la zone de {location_name} "
-        f"(lat_min={lat - bbox_offset}, lat_max={lat + bbox_offset}, "
-        f"lon_min={lng - bbox_offset}, lon_max={lng + bbox_offset})."
-    )
-
-    doomsday_query = (
-        f"Analyse les risques naturels et securitaires autour de {location_name} "
-        f"(lat={lat}, lng={lng}, pays={geo.get('country', '')})."
-    )
-
-    maritime_agent = create_maritime_agent()
-    aviation_agent = create_aviation_agent()
-    doomsday_agent = create_doomsday_agent()
-
-    weather_result, maritime_result, aviation_result, doomsday_result = await asyncio.gather(
-        get_weather.tool_func(lat=lat, lng=lng),
-        _run_agent(maritime_agent, maritime_query),
-        _run_agent(aviation_agent, aviation_query),
-        _run_agent(doomsday_agent, doomsday_query),
-    )
-
-    return _format_briefing(
-        query=user_query,
-        geo=geo,
-        weather=weather_result,
-        maritime=maritime_result,
-        aviation=aviation_result,
-        doomsday=doomsday_result,
-    )
+    # Étape 3 : Formater le briefing
+    return _format_briefing(user_query, agent_results)
 
 
-def _format_briefing(query, geo, weather, maritime, aviation, doomsday=None) -> str:
+def _format_briefing(query: str, results: dict[str, str]) -> str:
     """Formate le briefing final."""
+    labels = {
+        "maritime": "🚢 MARITIME",
+        "aviation": "✈️  AVIATION",
+        "doomsday": "💀 DOOMSDAY — RISQUES & MENACES",
+    }
+
     lines = []
     lines.append("=" * 60)
     lines.append("BRIEFING OSINT")
     lines.append("=" * 60)
 
-    if geo:
-        lines.append(f"\n📍 Zone : {geo['location']}, {geo.get('country', '')}")
-        lines.append(f"   Coordonnées : {geo['lat']:.4f}, {geo['lng']:.4f}")
-
-    if weather:
-        lines.append(f"\n🌤️  Météo : {weather.get('condition', '?')} | "
-                      f"{weather.get('temperature_c', '?')}°C | "
-                      f"Vent {weather.get('wind_kmh', '?')} km/h | "
-                      f"Humidité {weather.get('humidity_pct', '?')}%")
-
-    lines.append(f"\n{'─' * 60}")
-    lines.append("🚢 MARITIME")
-    lines.append(f"{'─' * 60}")
-    lines.append(maritime)
-
-    lines.append(f"\n{'─' * 60}")
-    lines.append("✈️  AVIATION")
-    lines.append(f"{'─' * 60}")
-    lines.append(aviation)
-
-    if doomsday:
+    for name, content in results.items():
         lines.append(f"\n{'─' * 60}")
-        lines.append("💀 DOOMSDAY — RISQUES & MENACES")
+        lines.append(labels.get(name, name.upper()))
         lines.append(f"{'─' * 60}")
-        lines.append(doomsday)
+        lines.append(content)
 
     lines.append(f"\n{'=' * 60}")
     return "\n".join(lines)

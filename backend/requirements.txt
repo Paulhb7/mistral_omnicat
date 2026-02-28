@@ -5,3 +5,5 @@ strands-agents-tools
 strands-agents-builder
 websockets
 httpx
+fastapi
+uvicorn

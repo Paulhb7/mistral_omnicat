@@ -41,16 +41,8 @@ _WMO_CODES = {
 }
 
 
-@tool
-async def geocode_location(location: str) -> dict:
-    """Convertit un nom de lieu (ville, pays, region, port, aeroport) en coordonnees latitude/longitude.
-
-    Args:
-        location: Nom du lieu a geocoder (ex: "Marseille", "Strait of Gibraltar", "Aeroport CDG").
-
-    Returns:
-        Coordonnees et informations du lieu (lat, lng, pays, codes ISO).
-    """
+async def _geocode_location(location: str) -> dict:
+    """Logique brute de geocodage, appelable directement depuis l'orchestrateur."""
     async with httpx.AsyncClient() as client:
         r = await client.get(
             "https://nominatim.openstreetmap.org/search",
@@ -78,17 +70,8 @@ async def geocode_location(location: str) -> dict:
     }
 
 
-@tool
-async def get_weather(lat: float, lng: float) -> dict:
-    """Recupere les conditions meteo actuelles pour une position geographique.
-
-    Args:
-        lat: Latitude du lieu (ex: 43.296).
-        lng: Longitude du lieu (ex: 5.369).
-
-    Returns:
-        Conditions meteo actuelles (temperature, vent, humidite, description).
-    """
+async def _get_weather(lat: float, lng: float) -> dict:
+    """Logique brute de meteo, appelable directement depuis l'orchestrateur."""
     async with httpx.AsyncClient() as client:
         r = await client.get(
             "https://api.open-meteo.com/v1/forecast",
@@ -111,3 +94,30 @@ async def get_weather(lat: float, lng: float) -> dict:
         "wind_kmh": current.get("wind_speed_10m"),
         "humidity_pct": current.get("relative_humidity_2m"),
     }
+
+
+@tool
+async def geocode_location(location: str) -> dict:
+    """Convertit un nom de lieu (ville, pays, region, port, aeroport) en coordonnees latitude/longitude.
+
+    Args:
+        location: Nom du lieu a geocoder (ex: "Marseille", "Strait of Gibraltar", "Aeroport CDG").
+
+    Returns:
+        Coordonnees et informations du lieu (lat, lng, pays, codes ISO).
+    """
+    return await _geocode_location(location)
+
+
+@tool
+async def get_weather(lat: float, lng: float) -> dict:
+    """Recupere les conditions meteo actuelles pour une position geographique.
+
+    Args:
+        lat: Latitude du lieu (ex: 43.296).
+        lng: Longitude du lieu (ex: 5.369).
+
+    Returns:
+        Conditions meteo actuelles (temperature, vent, humidite, description).
+    """
+    return await _get_weather(lat, lng)
