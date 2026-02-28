@@ -31,6 +31,7 @@ export function useChat(
   const [agentMode, setAgentMode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const sessionIdRef = useRef<string>(crypto.randomUUID());
 
   const send = useCallback(
     async (message: string) => {
@@ -55,7 +56,7 @@ export function useChat(
         const res = await fetch(apiEndpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message }),
+          body: JSON.stringify({ message, session_id: sessionIdRef.current }),
           signal: controller.signal,
         });
 
@@ -143,6 +144,7 @@ export function useChat(
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
+    sessionIdRef.current = crypto.randomUUID();
     setMessages([]);
     setTools([]);
     setIsLoading(false);

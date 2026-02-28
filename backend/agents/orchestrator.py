@@ -11,6 +11,7 @@ from pathlib import Path
 
 from strands import Agent
 from strands.models.bedrock import BedrockModel
+from strands.session.file_session_manager import FileSessionManager
 
 from agents.agent_tools import (
     maritime_analyst,
@@ -35,12 +36,19 @@ def _load_prompt(name: str) -> str:
     return (PROMPTS_DIR / f"{name}.md").read_text().strip()
 
 
-def _get_orchestrator_agent() -> Agent:
-    """Create the orchestrator agent with all specialist tools."""
+SESSIONS_DIR = Path(__file__).resolve().parent.parent / "sessions"
+
+
+def _get_orchestrator_agent(session_id: str) -> Agent:
+    """Create the orchestrator agent with all specialist tools and session persistence."""
     model = BedrockModel(
         model_id=os.getenv("ORCHESTRATOR_MODEL_ID", "mistral.mistral-small-2402-v1:0"),
         region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
         streaming=False,
+    )
+    session_manager = FileSessionManager(
+        session_id=session_id,
+        storage_dir=str(SESSIONS_DIR),
     )
     return Agent(
         model=model,
@@ -54,6 +62,7 @@ def _get_orchestrator_agent() -> Agent:
             get_weather,
         ],
         system_prompt=_load_prompt("orchestrator_agent"),
+        session_manager=session_manager,
     )
 
 
@@ -66,14 +75,14 @@ async def _run_agent(agent: Agent, query: str) -> str:
         return f"[Error] {e}"
 
 
-async def run_orchestrator(user_query: str) -> str:
+async def run_orchestrator(user_query: str, session_id: str) -> str:
     """
     Main entry point.
 
     The orchestrator agent decides which specialists to call,
     chains calls as needed, and produces a cross-enriched briefing.
     """
-    orchestrator = _get_orchestrator_agent()
+    orchestrator = _get_orchestrator_agent(session_id)
     result = await _run_agent(orchestrator, user_query)
     return result
 

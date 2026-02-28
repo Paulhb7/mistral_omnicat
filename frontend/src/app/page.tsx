@@ -227,16 +227,28 @@ export default function Home() {
         {["Mistral AI", "AIS Stream", "OpenSky", "NASA EONET", "USGS", "ACLED", "GDELT"].map(src => (
           <span
             key={src}
+            className="source-tag"
             style={{
               fontSize: 10, letterSpacing: 2,
               color: "rgba(255,250,235,0.18)",
               fontFamily: "'Roboto Mono', monospace",
               textTransform: "uppercase",
+              padding: "4px 10px",
+              transition: "all 0.2s",
+              cursor: "default",
             }}
           >
             {src}
           </span>
         ))}
+        <style>{`
+          .source-tag:hover {
+            color: #fa500f !important;
+            background: rgba(250,80,15,0.06);
+            border: 1px solid rgba(250,80,15,0.2);
+            margin: -1px;
+          }
+        `}</style>
       </footer>
     </main>
   );

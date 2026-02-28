@@ -34,6 +34,7 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     message: str
+    session_id: str
 
 
 def _sse(data: dict) -> str:
@@ -61,7 +62,7 @@ async def stream_endpoint(request: ChatRequest):
 
     async def generate():
         try:
-            result = await run_orchestrator(request.message)
+            result = await run_orchestrator(request.message, request.session_id)
             yield _sse({"type": "content", "data": result})
             yield "data: [DONE]\n\n"
 
