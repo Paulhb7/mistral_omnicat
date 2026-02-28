@@ -22,7 +22,7 @@ def _load_prompt(name: str) -> str:
 
 def create_maritime_agent() -> Agent:
     model = BedrockModel(
-        model_id="mistral.ministral-3-14b-instruct",
+        model_id=os.getenv("AGENT_MODEL_ID", "mistral.ministral-3-14b-instruct"),
         region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
         streaming=False,
     )
