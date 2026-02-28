@@ -14,6 +14,7 @@ from strands.models.bedrock import BedrockModel
 from agents.maritime_agent import create_maritime_agent
 from agents.aviation_agent import create_aviation_agent
 from agents.doomsday_agent import create_doomsday_agent
+from agents.solar_agent import create_solar_agent
 
 
 _ROUTING_PROMPT = """Tu es un routeur de requêtes pour un système d'intelligence OSINT.
@@ -22,6 +23,7 @@ En fonction du message de l'utilisateur, réponds avec UN OU PLUSIEURS mots parm
 - maritime   → bateaux, navires, ports, trafic maritime, MMSI, AIS
 - aviation   → avions, vols, aéroports, trafic aérien, ICAO
 - doomsday   → risques, menaces, séismes, climat, conflits, sécurité
+- solar      → soleil, éruptions solaires, astéroïdes, système solaire, espace, météo spatiale, NEO
 
 Règles :
 - Réponds UNIQUEMENT avec les mots séparés par des espaces. Pas d'explication.
@@ -44,8 +46,8 @@ def _get_router_agent() -> Agent:
 
 def _parse_routing(text: str) -> list[str]:
     """Extrait les noms d'agents depuis la réponse du routeur."""
-    valid = {"maritime", "aviation", "doomsday"}
-    found = [w for w in re.findall(r"\b(maritime|aviation|doomsday)\b", text.lower())]
+    valid = {"maritime", "aviation", "doomsday", "solar"}
+    found = [w for w in re.findall(r"\b(maritime|aviation|doomsday|solar)\b", text.lower())]
     return list(dict.fromkeys(found)) if found else list(valid)
 
 
@@ -53,6 +55,7 @@ _SPECIALISTS = {
     "maritime": create_maritime_agent,
     "aviation": create_aviation_agent,
     "doomsday": create_doomsday_agent,
+    "solar": create_solar_agent,
 }
 
 
@@ -100,6 +103,7 @@ def _format_briefing(query: str, results: dict[str, str]) -> str:
         "maritime": "🚢 MARITIME",
         "aviation": "✈️  AVIATION",
         "doomsday": "💀 DOOMSDAY — RISQUES & MENACES",
+        "solar": "☀️  SOLAR — SYSTEME SOLAIRE",
     }
 
     lines = []
