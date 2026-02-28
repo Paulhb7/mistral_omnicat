@@ -66,10 +66,57 @@ function Nav() {
 
 export default function AboutPage() {
   return (
-    <div style={{ minHeight: "100vh", background: "#111113", color: "#fffaeb", fontFamily: sans }}>
+    <div style={{ minHeight: "100vh", background: "#111113", color: "#fffaeb", fontFamily: sans, position: "relative", overflow: "hidden" }}>
+      {/* Noise texture */}
+      <div
+        aria-hidden
+        style={{
+          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "repeat",
+        }}
+      />
+
+      {/* Orange glow — top right */}
+      <div
+        aria-hidden
+        style={{
+          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+          background: "radial-gradient(ellipse 50% 35% at 85% 0%, rgba(250,80,15,0.10) 0%, transparent 60%)",
+        }}
+      />
+
+      {/* Floating scan line */}
+      <div
+        aria-hidden
+        style={{
+          position: "fixed", left: 0, right: 0, height: 1, zIndex: 0,
+          pointerEvents: "none",
+          background: "linear-gradient(90deg, transparent 0%, rgba(250,80,15,0.15) 50%, transparent 100%)",
+          animation: "scanline 8s linear infinite",
+        }}
+      />
+
+      {/* Grid dots background */}
+      <div
+        aria-hidden
+        style={{
+          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", opacity: 0.4,
+          backgroundImage: "radial-gradient(rgba(250,80,15,0.15) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+      />
+
+      <style>{`
+        @keyframes scanline {
+          0% { top: -2%; }
+          100% { top: 102%; }
+        }
+      `}</style>
+
       <Nav />
 
-      <main style={{ maxWidth: 900, margin: "0 auto", padding: "96px 32px 80px" }}>
+      <main style={{ maxWidth: 900, margin: "0 auto", padding: "96px 32px 80px", position: "relative", zIndex: 10 }}>
 
         {/* Header */}
         <div style={{ marginBottom: 64 }}>
