@@ -30,12 +30,21 @@ export default function Home() {
         </p>
 
         {/* CTA */}
-        <Link
-          href="/chat"
-          className="inline-block border border-white/20 px-8 py-3 text-sm uppercase tracking-widest transition-all duration-300 hover:bg-white hover:text-black"
-        >
-          Lancer un briefing
-        </Link>
+        <div className="flex gap-4 justify-center">
+          <Link
+            href="/chat"
+            className="inline-block border border-white/20 px-8 py-3 text-sm uppercase tracking-widest transition-all duration-300 hover:bg-white hover:text-black"
+          >
+            Lancer un briefing
+          </Link>
+          <Link
+            href="/about"
+            className="inline-block border border-white/10 px-8 py-3 text-sm uppercase tracking-widest transition-all duration-300 hover:border-white/30"
+            style={{ color: "var(--muted)" }}
+          >
+            Architecture
+          </Link>
+        </div>
 
         {/* Data sources */}
         <div
