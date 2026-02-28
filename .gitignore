@@ -10,3 +10,4 @@ dist/
 maritime_data.db
 .next
 node_modules/
+strands_documentation/

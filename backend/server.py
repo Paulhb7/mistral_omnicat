@@ -1,7 +1,6 @@
 """
 FastAPI server — exposes the orchestrator via SSE streaming.
 """
-import asyncio
 import json
 import logging
 
@@ -12,7 +11,6 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from agents.orchestrator import run_orchestrator
-from tools.geo_tools import _geocode_location, _get_weather
 
 load_dotenv()
 
@@ -52,73 +50,18 @@ async def stream_endpoint(request: ChatRequest):
     """
     SSE streaming endpoint with cross-enriched intelligence briefings.
 
-    The orchestrator agent decides which specialists to call,
-    chains calls as needed, and produces a cross-enriched briefing.
+    The orchestrator agent handles everything: it decides whether to geocode,
+    which specialists to call, and how to respond (conversationally or with a briefing).
 
     Events:
-    - tool_start / tool_end : tool lifecycle
-    - location             : geocoded coordinates
-    - content              : briefing text (accumulated)
+    - content              : response text (accumulated)
     - error                : error
     - [DONE]               : end of stream
     """
 
     async def generate():
         try:
-            # Step 1: Geocode for map display
-            yield _sse({"type": "tool_start", "tool": "geocode_location"})
-            geo = await _geocode_location(location=request.message)
-            yield _sse({"type": "tool_end", "tool": "geocode_location"})
-
-            enriched_query = request.message
-
-            if "error" not in geo:
-                lat, lng = geo["lat"], geo["lng"]
-                location_name = geo["location"]
-                country = geo.get("country", "")
-
-                yield _sse({
-                    "type": "location",
-                    "name": location_name,
-                    "lat": lat,
-                    "lng": lng,
-                })
-
-                # Step 2: Weather for briefing header
-                yield _sse({"type": "tool_start", "tool": "get_weather"})
-                weather_result = await _get_weather(lat=lat, lng=lng)
-                yield _sse({"type": "tool_end", "tool": "get_weather"})
-
-                # Build briefing header
-                briefing_header = f"# Briefing OSINT — {location_name}, {country}\n\n"
-                briefing_header += f"**Coordinates**: {lat:.4f}, {lng:.4f}\n\n"
-
-                if weather_result:
-                    briefing_header += (
-                        f"**Weather**: {weather_result.get('condition', '?')} | "
-                        f"{weather_result.get('temperature_c', '?')}°C | "
-                        f"Wind {weather_result.get('wind_kmh', '?')} km/h | "
-                        f"Humidity {weather_result.get('humidity_pct', '?')}%\n\n"
-                    )
-
-                yield _sse({"type": "content", "data": briefing_header})
-
-                # Enrich query with location context for the orchestrator
-                bbox_offset = 0.2
-                enriched_query = (
-                    f"Analyze the area around {location_name}, {country} "
-                    f"(lat={lat}, lng={lng}, "
-                    f"bbox [{lat - bbox_offset}, {lng - bbox_offset}] to "
-                    f"[{lat + bbox_offset}, {lng + bbox_offset}])."
-                )
-            else:
-                yield _sse({"type": "content", "data": "Location not found. Running direct analysis...\n\n"})
-
-            # Step 3: Run the orchestrator (agent-as-tools, cross-enriched)
-            yield _sse({"type": "tool_start", "tool": "orchestrator"})
-            result = await run_orchestrator(enriched_query)
-            yield _sse({"type": "tool_end", "tool": "orchestrator"})
-
+            result = await run_orchestrator(request.message)
             yield _sse({"type": "content", "data": result})
             yield "data: [DONE]\n\n"
 
