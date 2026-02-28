@@ -1,10 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import OrangeGlobe from "@/components/orange-globe";
 import { useTheme } from "@/context/theme-context";
+import { sfxActivate } from "@/utils/sfx";
 
 export default function Home() {
+  const router = useRouter();
   const { theme, themeKey, toggle: toggleTheme } = useTheme();
   const isCyber = themeKey === "cyberpunk";
 
@@ -212,8 +215,8 @@ export default function Home() {
 
         {/* CTA */}
         <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 16 }}>
-          <Link
-            href="/chat"
+          <button
+            onClick={() => { sfxActivate(); setTimeout(() => router.push("/chat"), 350); }}
             style={{
               display: "inline-flex", alignItems: "center", gap: 10,
               padding: "14px 32px",
@@ -225,12 +228,13 @@ export default function Home() {
               fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
               transition: "opacity 0.15s, box-shadow 0.3s ease",
               boxShadow: isCyber ? `0 0 20px ${theme.accent}, 0 0 40px ${theme.accentDim}, 0 0 80px ${theme.accentDim}` : "none",
+              border: "none", cursor: "pointer",
             }}
             className="hover:opacity-80"
           >
             Launch briefing
             <span style={{ fontFamily: "'Roboto Mono', monospace", fontSize: 16 }}>{"\u2192"}</span>
-          </Link>
+          </button>
           <Link
             href="/about"
             style={{

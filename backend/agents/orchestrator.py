@@ -101,16 +101,18 @@ async def stream_orchestrator(user_query: str, session_id: str):
     emitted_agents = set()
 
     async for event in orchestrator.stream_async(user_query):
+        # Eagerly drain data bus on every iteration — this ensures
+        # location/data events are forwarded as soon as tools emit them,
+        # not only when the next tool starts or the stream ends.
+        for bus_event in _drain_bus():
+            yield bus_event
+
         # Detect tool start
         if "current_tool_use" in event and event["current_tool_use"].get("name"):
             tool_name = event["current_tool_use"]["name"]
             if tool_name != active_tool:
                 if active_tool is not None:
                     yield {"type": "tool_end", "tool": active_tool}
-                    # Drain data bus after each tool completes — sub-agent tools
-                    # (get_climate_events, get_earthquakes, …) push results here
-                    for bus_event in _drain_bus():
-                        yield bus_event
                 active_tool = tool_name
                 yield {"type": "tool_start", "tool": active_tool}
 
@@ -124,9 +126,6 @@ async def stream_orchestrator(user_query: str, session_id: str):
             if active_tool is not None:
                 yield {"type": "tool_end", "tool": active_tool}
                 active_tool = None
-                # Drain bus one final time after the last tool
-                for bus_event in _drain_bus():
-                    yield bus_event
             yield {"type": "content", "data": event["data"]}
 
     # Close any remaining tool

@@ -9,6 +9,11 @@ import { EarthPanel } from '@/components/intel-panels';
 import { SearchBar } from '@/components/search-bar';
 import { BriefingPanel } from '@/components/briefing-panel';
 import { VoiceOrbStatus } from '@/components/voice-orb-status';
+import { MicWaveform } from '@/components/mic-waveform';
+import { JarvisLoader } from '@/components/jarvis-loader';
+import { NasaCallPopup } from '@/components/nasa-call-popup';
+import { VaderCallPopup } from '@/components/vader-call-popup';
+import { sfxActivate, sfxDeactivate, sfxListening, sfxSubmit, sfxSpeakStart, sfxComplete, sfxIncomingCall } from '@/utils/sfx';
 
 const EarthMap = dynamic(() => import('@/components/earth-map'), { ssr: false });
 
@@ -86,6 +91,10 @@ export default function IntelPage() {
   const [mapAgent, setMapAgent] = useState<MapView>(null);
   const [modeText, setModeText] = useState('SOLAR SYSTEM · EARTH');
 
+  // ── Call popups ─────────────────────────────────────────────────────────────
+  const [nasaPopupVisible, setNasaPopupVisible] = useState(false);
+  const [vaderPopupVisible, setVaderPopupVisible] = useState(false);
+
   // ── Voice state ──────────────────────────────────────────────────────────────
   const [voiceMode, setVoiceMode]     = useState(false);
   const [isSpeaking, setIsSpeaking]   = useState(false);
@@ -98,6 +107,7 @@ export default function IntelPage() {
   const transcriptRef = useRef('');
   const voiceModeRef  = useRef(false);
   const ttsAudioRef   = useRef<HTMLAudioElement | null>(null);
+  const micAnalyserRef = useRef<AnalyserNode | null>(null);
   const handleSearchRef = useRef<(q: string) => void>(() => {});
 
   const inpRef = useRef<HTMLInputElement>(null);
@@ -130,6 +140,7 @@ export default function IntelPage() {
       sttWsRef.current.close();
       sttWsRef.current = null;
     }
+    micAnalyserRef.current = null;
   }, []);
 
   // ── STT — realtime via Voxtral WebSocket (PCM s16le 16kHz) ──────────────
@@ -147,24 +158,68 @@ export default function IntelPage() {
     }
     micStreamRef.current = stream;
 
+    // Connect mic to a separate analyser for waveform visualization (with gain boost)
+    const { ctx: mainCtx } = ensureAudioCtx();
+    const micAnalyser = mainCtx.createAnalyser();
+    micAnalyser.fftSize = 256;
+    const micGain = mainCtx.createGain();
+    micGain.gain.value = 1.5;
+    const micVizSource = mainCtx.createMediaStreamSource(stream);
+    micVizSource.connect(micGain);
+    micGain.connect(micAnalyser);
+    micAnalyserRef.current = micAnalyser;
+
     setIsListening(true);
     setStatusText('CONNECTING . . .');
 
     // WebSocket to backend
     const ws = new WebSocket('ws://localhost:8000/ws/stt');
     sttWsRef.current = ws;
+    let submitted = false;
+
+    const submitTranscript = () => {
+      if (submitted) return;
+      const text = transcriptRef.current.trim();
+      if (!text) return;
+      submitted = true;
+      sfxSubmit();
+      stopMicAndWs();
+      setIsListening(false);
+      handleSearchRef.current(text);
+    };
 
     ws.onopen = () => {
       setStatusText('LISTENING . . .');
+      sfxListening();
 
-      // Capture raw PCM and downsample to 16kHz
+      // Capture raw PCM at 16kHz
       const ctx = new AudioContext({ sampleRate: 16000 });
       const source = ctx.createMediaStreamSource(stream);
       const processor = ctx.createScriptProcessor(4096, 1, 1);
 
+      // Silence detection: track when we last received speech
+      let lastSpeechTime = Date.now();
+      let hasSpoken = false;
+      const SILENCE_TIMEOUT = 1500; // ms of silence before auto-submit
+
       processor.onaudioprocess = (e) => {
         if (ws.readyState !== WebSocket.OPEN) return;
         const float32 = e.inputBuffer.getChannelData(0);
+
+        // Compute RMS energy
+        let sum = 0;
+        for (let i = 0; i < float32.length; i++) sum += float32[i] * float32[i];
+        const rms = Math.sqrt(sum / float32.length);
+
+        if (rms > 0.015) {
+          lastSpeechTime = Date.now();
+          hasSpoken = true;
+        } else if (hasSpoken && Date.now() - lastSpeechTime > SILENCE_TIMEOUT) {
+          // Silence detected after speech → submit
+          submitTranscript();
+          return;
+        }
+
         // Convert float32 → int16 PCM
         const int16 = new Int16Array(float32.length);
         for (let i = 0; i < float32.length; i++) {
@@ -185,10 +240,7 @@ export default function IntelPage() {
         transcriptRef.current += msg.text;
         setStatusText(`HEARD: ${transcriptRef.current.slice(-40)}`);
       } else if (msg.type === 'done') {
-        const text = transcriptRef.current.trim();
-        stopMicAndWs();
-        setIsListening(false);
-        if (text) handleSearchRef.current(text);
+        submitTranscript();
       } else if (msg.type === 'error') {
         console.error('WS STT error:', msg.text);
         stopMicAndWs();
@@ -205,14 +257,7 @@ export default function IntelPage() {
       if (voiceModeRef.current) setTimeout(() => { if (voiceModeRef.current) startListening(); }, 1000);
     };
 
-    ws.onclose = () => {
-      // If transcript accumulated but no 'done' event, submit what we have
-      const text = transcriptRef.current.trim();
-      if (text) {
-        setIsListening(false);
-        handleSearchRef.current(text);
-      }
-    };
+    ws.onclose = () => submitTranscript();
   }, [stopMicAndWs]);
 
   // ── TTS — speak text aloud via ElevenLabs ────────────────────────────────
@@ -234,6 +279,7 @@ export default function IntelPage() {
 
     setIsSpeaking(true);
     setStatusText('AGENT SPEAKING . . .');
+    sfxSpeakStart();
 
     try {
       const resp = await fetch('http://localhost:8000/tts', {
@@ -285,6 +331,7 @@ export default function IntelPage() {
 
   const toggleVoice = useCallback(() => {
     if (voiceMode) {
+      sfxDeactivate();
       setVoiceMode(false);
       setIsListening(false);
       setIsSpeaking(false);
@@ -292,11 +339,92 @@ export default function IntelPage() {
       stopMicAndWs();
       setStatusText('READY');
     } else {
+      sfxActivate();
       setVoiceMode(true);
       ensureAudioCtx();
       startListening();
     }
   }, [voiceMode, ensureAudioCtx, startListening, stopMicAndWs, stopTts]);
+
+  // ── Call popup helpers (shared logic) ────────────────────────────────────
+
+  const nasaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const vaderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const activateVoiceIfNeeded = useCallback(() => {
+    if (!voiceModeRef.current) {
+      sfxActivate();
+      setVoiceMode(true);
+      voiceModeRef.current = true;
+      ensureAudioCtx();
+    }
+  }, [ensureAudioCtx]);
+
+  // ── NASA call popup trigger ──────────────────────────────────────────────
+
+  const triggerNasaCall = useCallback(() => {
+    if (nasaPopupVisible || nasaTimerRef.current) return;
+    // Activate voice + AudioContext NOW (in user gesture) so it's not suspended later
+    activateVoiceIfNeeded();
+    const { ctx } = ensureAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    sfxIncomingCall();
+    // 3.5s suspense, then popup + Omni speaks
+    nasaTimerRef.current = setTimeout(() => {
+      nasaTimerRef.current = null;
+      setNasaPopupVisible(true);
+      speak(
+        "It seems you have received a message from NASA. Some tricky asteroids have entered the solar system. Do we accept the mission? If we don't, I will reconsider my position."
+      );
+    }, 3500);
+  }, [nasaPopupVisible, activateVoiceIfNeeded, ensureAudioCtx, speak]);
+
+  const handleNasaAccept = useCallback(() => {
+    setNasaPopupVisible(false);
+  }, []);
+
+  const handleNasaDismiss = useCallback(() => {
+    setNasaPopupVisible(false);
+  }, []);
+
+  // ── Vader call popup trigger ─────────────────────────────────────────────
+
+  const triggerVaderCall = useCallback(() => {
+    if (vaderPopupVisible || vaderTimerRef.current) return;
+    // Activate voice + AudioContext NOW (in user gesture) so it's not suspended later
+    activateVoiceIfNeeded();
+    const { ctx } = ensureAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    sfxIncomingCall();
+    // 3.5s suspense, then popup + Omni speaks
+    vaderTimerRef.current = setTimeout(() => {
+      vaderTimerRef.current = null;
+      setVaderPopupVisible(true);
+      speak(
+        "Well, that's unexpected. Darth Vader himself is requesting exoplanet intelligence. I suppose even the Dark Side needs real estate options. Let me search the Milky Way before he force-chokes our servers."
+      );
+    }, 3500);
+  }, [vaderPopupVisible, activateVoiceIfNeeded, ensureAudioCtx, speak]);
+
+  const handleVaderAccept = useCallback(() => {
+    setVaderPopupVisible(false);
+  }, []);
+
+  const handleVaderDismiss = useCallback(() => {
+    setVaderPopupVisible(false);
+  }, []);
+
+  // Keyboard shortcuts: Cmd+Shift+N → NASA, Cmd+Shift+V → Vader
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey) {
+        if (e.key.toLowerCase() === 'n') { e.preventDefault(); triggerNasaCall(); }
+        if (e.key.toLowerCase() === 'v') { e.preventDefault(); triggerVaderCall(); }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [triggerNasaCall, triggerVaderCall]);
 
   // ── Speak briefing when it completes in voice mode ────────────────────────
 
@@ -304,8 +432,8 @@ export default function IntelPage() {
   useEffect(() => {
     if (voiceMode && briefing && !isLoading && briefing !== prevBriefingRef.current) {
       prevBriefingRef.current = briefing;
-      const summary = briefing.length > 500 ? briefing.slice(0, 500) + '...' : briefing;
-      const clean = summary.replace(/[#*_\[\]()>`|\\-]/g, '').replace(/\n+/g, '. ');
+      sfxComplete();
+      const clean = briefing.replace(/[#*_\[\]()>`|\\-]/g, '').replace(/\n+/g, '. ');
       speak(clean);
     }
   }, [voiceMode, briefing, isLoading, speak]);
@@ -353,13 +481,14 @@ export default function IntelPage() {
     }
   }, [agentMode]);
 
-  // ── Update mode text when location arrives ────────────────────────────────
+  // ── Switch to Earth map + update mode text as soon as location arrives ────
 
   useEffect(() => {
-    if (location && mapAgent === 'earth') {
+    if (location) {
+      setMapAgent('earth');
       setModeText(`EARTH · ${location.name.toUpperCase()}`);
     }
-  }, [location, mapAgent]);
+  }, [location]);
 
   // ── Sync status from hook state ────────────────────────────────────────────
 
@@ -598,8 +727,14 @@ export default function IntelPage() {
           )}
         </div>
 
+        {/* Jarvis HUD loader — above the orb while agents work */}
+        <JarvisLoader active={isLoading} agentLabel={agentMode ? `${agentMode.toUpperCase()} AGENT` : 'SCANNING'} />
+
         {/* Omni Orb + Voice toggle */}
         <VoiceOrbStatus isSpeaking={isSpeaking} analyser={analyserRef.current} />
+
+        {/* Mic waveform — your voice */}
+        <MicWaveform analyser={micAnalyserRef.current} isActive={isListening} />
 
         <SearchBar
           inputRef={inpRef}
@@ -623,6 +758,38 @@ export default function IntelPage() {
         agentMode={agentMode}
         monoFont={mono}
         onClose={() => setBriefingVisible(false)}
+      />
+
+      {/* Hidden phone trigger */}
+      <button
+        onClick={triggerNasaCall}
+        style={{
+          position: 'fixed', bottom: 8, right: 90,
+          background: 'transparent', border: 'none', padding: 6,
+          color: theme.fgMuted, cursor: 'pointer', opacity: 0.25,
+          zIndex: 71, transition: 'opacity 0.3s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.opacity = '0.6'; }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = '0.25'; }}
+        title="Incoming call"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+        </svg>
+      </button>
+
+      {/* NASA call popup */}
+      <NasaCallPopup
+        visible={nasaPopupVisible}
+        onAccept={handleNasaAccept}
+        onDismiss={handleNasaDismiss}
+      />
+
+      {/* Vader call popup */}
+      <VaderCallPopup
+        visible={vaderPopupVisible}
+        onAccept={handleVaderAccept}
+        onDismiss={handleVaderDismiss}
       />
 
       {/* Watermark */}

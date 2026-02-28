@@ -29,7 +29,7 @@ const OMNICAT: ThemePalette = {
   accentDim: 'rgba(250, 80, 15, 0.15)',
   accentBorder: 'rgba(250, 80, 15, 0.3)',
   card: 'rgba(255, 250, 235, 0.04)',
-  border: 'rgba(255, 250, 235, 0.08)',
+  border: 'rgba(250, 80, 15, 0.18)',
   glow: 'rgba(250, 80, 15, 0.12)',
   accent2: '#fa500f',
 };
@@ -42,9 +42,9 @@ const CYBERPUNK: ThemePalette = {
   fgMuted: 'rgba(224, 240, 255, 0.2)',
   accent: '#00f0ff',
   accentDim: 'rgba(0, 240, 255, 0.12)',
-  accentBorder: 'rgba(0, 240, 255, 0.35)',
+  accentBorder: 'rgba(255, 0, 170, 0.35)',
   card: 'rgba(0, 240, 255, 0.04)',
-  border: 'rgba(0, 240, 255, 0.10)',
+  border: 'rgba(255, 0, 170, 0.18)',
   glow: 'rgba(0, 240, 255, 0.10)',
   accent2: '#ff00aa',
 };

@@ -71,6 +71,12 @@ OSINT (Open Source Intelligence) analysis system for maritime, aerial, geopoliti
 - Scientific papers from arXiv
 - Habitability assessments
 
+### 7. Voice Interface — Jarvis Mode
+- **STT (Speech-to-Text)**: Real-time transcription via Mistral Voxtral (`voxtral-mini-transcribe-realtime-2602`) over WebSocket, with silence detection for auto-submit
+- **TTS (Text-to-Speech)**: ElevenLabs streaming API with a custom-built voice ("Omni"), inspired by Jarvis — designed for authoritative, calm intelligence briefings
+- **OmniOrb**: 3D animated voice orb (Three.js, 2800 particles, Fibonacci sphere distribution) that reacts in real-time to voice frequency data via WebAudio AnalyserNode
+- Full voice loop: Listen → Transcribe → Query agents → Speak briefing → Listen again
+
 ## Installation
 
 ### Prerequisites
@@ -130,6 +136,9 @@ Open `http://localhost:3000` in your browser and enter a location or query.
 | `AISSTREAM_API_KEY`       | AISStream API key        | *(required)*                               |
 | `ORCHESTRATOR_MODEL_ID`   | LLM model for routing    | `mistral.mistral-large-3-675b-instruct`    |
 | `AGENT_MODEL_ID`          | LLM model for agents     | `mistral.ministral-3-14b-instruct`         |
+| `MISTRAL_API_KEY`         | Mistral API key (Voxtral STT) | *(required for voice mode)*          |
+| `ELEVENLABS_API_KEY`      | ElevenLabs API key (TTS) | *(required for voice mode)*                |
+| `ELEVENLABS_VOICE_ID`     | ElevenLabs voice ID      | `1aBfmKpXXPzK6xmSpeqn` (custom Omni voice)|
 | `ACLED_API_KEY`           | ACLED API key (optional) |                                            |
 | `ACLED_EMAIL`             | ACLED email (optional)   |                                            |
 
@@ -146,9 +155,15 @@ Open `http://localhost:3000` in your browser and enter a location or query.
 ### Frontend
 - **Next.js 15** + **React 19** — UI framework
 - **TypeScript** — Language
+- **Three.js** — 3D OmniOrb voice visualizer
 - **Leaflet** — Interactive maps
 - **Tailwind CSS 4** — Styling
 - **react-markdown** — Briefing rendering
+- **WebAudio API** — Voice frequency analysis for orb reactivity
+
+### Voice Stack
+- **Mistral Voxtral** — Real-time speech-to-text (WebSocket streaming, PCM s16le 16kHz)
+- **ElevenLabs** — Text-to-speech with custom Jarvis-inspired voice ("Omni"), streaming via `eleven_turbo_v2_5` for low-latency playback
 
 ## Technical Architecture
 
@@ -169,6 +184,20 @@ Specialist agents are wrapped as `@tool` decorators in `agents/agent_tools.py`, 
 ### Streaming
 
 The `/stream` endpoint uses Server-Sent Events (SSE). The orchestrator yields typed events (`content`, `tool_start`, `tool_end`, `agent_selected`, `location`, `data_*`) that the frontend consumes in real time.
+
+### Voice Pipeline
+
+| Endpoint | Protocol | Service | Purpose |
+|----------|----------|---------|---------|
+| `/ws/stt` | WebSocket | Mistral Voxtral | Real-time speech-to-text (PCM s16le 16kHz mono) |
+| `/stt` | POST | Mistral Voxtral | File upload transcription |
+| `/tts` | POST | ElevenLabs | Text-to-speech streaming (returns audio/mpeg) |
+
+The voice loop operates as a continuous cycle: **Listen** (Voxtral STT via WebSocket with silence detection) → **Process** (Orchestrator + specialist agents) → **Speak** (ElevenLabs TTS with orb audio reactivity) → **Listen again**.
+
+The OmniOrb connects to the TTS audio output via `createMediaElementSource` → `AnalyserNode`, so the 3D particle sphere deforms in real-time based on the actual voice frequencies — not just a simple on/off animation.
+
+A custom ElevenLabs voice ("Omni") was created specifically for this project, inspired by Jarvis (Iron Man) — authoritative, calm, with a slight British inflection suited for intelligence briefings.
 
 ### Tools
 

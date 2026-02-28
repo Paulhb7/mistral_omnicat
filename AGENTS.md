@@ -42,9 +42,16 @@ backend/
 frontend/
 ├── src/app/               # Next.js App Router pages
 │   ├── page.tsx           # Landing page with radar animation
-│   └── chat/page.tsx      # Main intelligence briefing interface
-├── src/components/        # React components (map, briefing panel, etc.)
+│   └── chat/page.tsx      # Main intelligence interface (voice loop, TTS/STT)
+├── src/components/
+│   ├── omni-orb.tsx       # 3D voice-reactive particle orb (Three.js)
+│   ├── voice-orb-status.tsx # Orb + status display wrapper
+│   ├── search-bar.tsx     # Query input + mic toggle
+│   ├── briefing-panel.tsx # Markdown briefing display
+│   ├── earth-map.tsx      # Leaflet map with event overlays
+│   └── intel-panels.tsx   # Data panels (weather, quakes, etc.)
 ├── src/hooks/use-chat.ts  # SSE streaming hook
+├── src/context/theme-context.tsx  # OmniCAT + Cyberpunk themes
 └── package.json
 ```
 
@@ -86,6 +93,39 @@ frontend/
 
 Specialist agents use `mistral.ministral-3-14b-instruct` model.
 
+## Voice Interface — "Omni"
+
+OmniCAT features a full voice interaction system inspired by Jarvis (Iron Man). A custom ElevenLabs voice ("Omni") was created specifically for this project — authoritative, calm, with a slight British inflection suited for intelligence briefings.
+
+### Voice Pipeline
+
+```
+User speaks → [Mic PCM 16kHz] → /ws/stt (Voxtral) → Transcript
+    → Orchestrator → Specialist Agents → Briefing
+    → /tts (ElevenLabs "Omni") → [Audio MP3] → Speaker + AnalyserNode → OmniOrb
+    → Loop back to listening
+```
+
+### Components
+
+| Component | File | Role |
+|-----------|------|------|
+| STT (Realtime) | `backend/server.py` `/ws/stt` | WebSocket streaming via Mistral Voxtral (`voxtral-mini-transcribe-realtime-2602`). Receives PCM s16le 16kHz mono frames. |
+| STT (Upload) | `backend/server.py` `/stt` | File upload transcription via Voxtral (`voxtral-mini-2602`). |
+| TTS | `backend/server.py` `/tts` | ElevenLabs streaming API (`eleven_turbo_v2_5`). Custom voice ID: `1aBfmKpXXPzK6xmSpeqn`. Returns streaming `audio/mpeg`. |
+| Voice Loop | `frontend/chat/page.tsx` | Manages the full cycle: listen → transcribe → query → speak → listen again. Includes silence detection (1.5s timeout) for auto-submit. |
+| OmniOrb | `frontend/components/omni-orb.tsx` | 3D particle sphere (2800 inner + 700 halo particles, Fibonacci distribution). Connected to TTS audio via `createMediaElementSource` → `AnalyserNode` for real-time frequency-based deformation. |
+
+### Voice Settings
+
+| Parameter | Value | Purpose |
+|-----------|-------|---------|
+| ElevenLabs Model | `eleven_turbo_v2_5` | Lowest latency for live demo |
+| Stability | 0.5 | Balanced expression |
+| Similarity Boost | 0.75 | Close to original Omni voice |
+| Silence Timeout | 1500ms | Auto-submit after user stops speaking |
+| Audio Format (STT) | PCM s16le, 16kHz, mono | Voxtral realtime requirement |
+
 ## Key Patterns
 
 ### Agent-as-Tools
@@ -113,8 +153,11 @@ The `/stream` endpoint uses Server-Sent Events. The `stream_orchestrator()` asyn
 | Agents   | strands-agents framework               |
 | Backend  | Python, FastAPI, uvicorn               |
 | Frontend | Next.js 15, React 19, TypeScript       |
+| 3D       | Three.js (OmniOrb voice visualizer)    |
 | Maps     | Leaflet                                |
 | Styling  | Tailwind CSS 4                         |
+| STT      | Mistral Voxtral (realtime WebSocket)   |
+| TTS      | ElevenLabs (custom "Omni" voice)       |
 | Database | SQLite (maritime vessel history)       |
 | HTTP     | httpx (async)                          |
 | Tests    | pytest, pytest-asyncio                 |
@@ -154,7 +197,12 @@ Required in `.env` (see `.env.example`):
 - `AWS_DEFAULT_REGION` — AWS region (e.g. `us-east-2`)
 - `AISSTREAM_API_KEY` — AISStream API key
 
+Required for voice mode:
+- `MISTRAL_API_KEY` — Mistral API key (Voxtral STT)
+- `ELEVENLABS_API_KEY` — ElevenLabs API key (TTS)
+
 Optional:
+- `ELEVENLABS_VOICE_ID` — Custom voice ID (default: `1aBfmKpXXPzK6xmSpeqn`, the "Omni" Jarvis-inspired voice)
 - `ORCHESTRATOR_MODEL_ID` — Override orchestrator model
 - `AGENT_MODEL_ID` — Override specialist agent model
 - `ACLED_API_KEY` / `ACLED_EMAIL` — ACLED conflict data access
