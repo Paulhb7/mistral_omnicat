@@ -31,7 +31,7 @@ Règles :
 
 def _get_router_agent() -> Agent:
     model = BedrockModel(
-        model_id=os.getenv("ORCHESTRATOR_MODEL_ID", "mistral.ministral-3-14b-instruct"),
+        model_id=os.getenv("ORCHESTRATOR_MODEL_ID", "mistral.mistral-small-2402-v1:0"),
         region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
         streaming=False,
     )
