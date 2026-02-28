@@ -92,8 +92,12 @@ export default function IntelPage() {
   const [isListening, setIsListening] = useState(false);
   const analyserRef   = useRef<AnalyserNode | null>(null);
   const audioCtxRef   = useRef<AudioContext | null>(null);
-  const mediaRecRef   = useRef<MediaRecorder | null>(null);
+  const sttWsRef      = useRef<WebSocket | null>(null);
+  const micStreamRef  = useRef<MediaStream | null>(null);
+  const scriptNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const transcriptRef = useRef('');
   const voiceModeRef  = useRef(false);
+  const ttsAudioRef   = useRef<HTMLAudioElement | null>(null);
   const handleSearchRef = useRef<(q: string) => void>(() => {});
 
   const inpRef = useRef<HTMLInputElement>(null);
@@ -117,94 +121,165 @@ export default function IntelPage() {
     return { ctx: audioCtxRef.current, analyser: analyserRef.current };
   }, []);
 
-  // ── STT — record audio via MediaRecorder, transcribe via Voxtral ─────────
+  // ── Helper: stop mic + WebSocket cleanly ─────────────────────────────────
+
+  const stopMicAndWs = useCallback(() => {
+    if (scriptNodeRef.current) { scriptNodeRef.current.disconnect(); scriptNodeRef.current = null; }
+    if (micStreamRef.current) { micStreamRef.current.getTracks().forEach(t => t.stop()); micStreamRef.current = null; }
+    if (sttWsRef.current && sttWsRef.current.readyState <= WebSocket.OPEN) {
+      sttWsRef.current.close();
+      sttWsRef.current = null;
+    }
+  }, []);
+
+  // ── STT — realtime via Voxtral WebSocket (PCM s16le 16kHz) ──────────────
 
   const startListening = useCallback(async () => {
-    // Stop any existing recorder
-    if (mediaRecRef.current && mediaRecRef.current.state !== 'inactive') {
-      mediaRecRef.current.stop();
-    }
+    stopMicAndWs();
+    transcriptRef.current = '';
 
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true } });
     } catch {
       console.error('Microphone access denied');
       return;
     }
+    micStreamRef.current = stream;
 
     setIsListening(true);
-    setStatusText('LISTENING . . .');
+    setStatusText('CONNECTING . . .');
 
-    const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-    const chunks: Blob[] = [];
+    // WebSocket to backend
+    const ws = new WebSocket('ws://localhost:8000/ws/stt');
+    sttWsRef.current = ws;
 
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    ws.onopen = () => {
+      setStatusText('LISTENING . . .');
 
-    recorder.onstop = async () => {
-      // Stop mic stream
-      stream.getTracks().forEach(t => t.stop());
-      setIsListening(false);
+      // Capture raw PCM and downsample to 16kHz
+      const ctx = new AudioContext({ sampleRate: 16000 });
+      const source = ctx.createMediaStreamSource(stream);
+      const processor = ctx.createScriptProcessor(4096, 1, 1);
 
-      if (chunks.length === 0) return;
-
-      const blob = new Blob(chunks, { type: 'audio/webm' });
-      const formData = new FormData();
-      formData.append('file', blob, 'voice.webm');
-
-      setStatusText('TRANSCRIBING . . .');
-      try {
-        const resp = await fetch('http://localhost:8000/stt', { method: 'POST', body: formData });
-        const data = await resp.json();
-        if (data.text) {
-          handleSearchRef.current(data.text);
-        } else if (data.error) {
-          console.error('STT error:', data.error);
-          setStatusText('STT ERROR');
-          if (voiceModeRef.current) setTimeout(() => { if (voiceModeRef.current) startListening(); }, 1000);
+      processor.onaudioprocess = (e) => {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        const float32 = e.inputBuffer.getChannelData(0);
+        // Convert float32 → int16 PCM
+        const int16 = new Int16Array(float32.length);
+        for (let i = 0; i < float32.length; i++) {
+          const s = Math.max(-1, Math.min(1, float32[i]));
+          int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
         }
-      } catch (err) {
-        console.error('STT fetch error:', err);
+        ws.send(int16.buffer);
+      };
+
+      source.connect(processor);
+      processor.connect(ctx.destination);
+      scriptNodeRef.current = processor;
+    };
+
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'text_delta') {
+        transcriptRef.current += msg.text;
+        setStatusText(`HEARD: ${transcriptRef.current.slice(-40)}`);
+      } else if (msg.type === 'done') {
+        const text = transcriptRef.current.trim();
+        stopMicAndWs();
+        setIsListening(false);
+        if (text) handleSearchRef.current(text);
+      } else if (msg.type === 'error') {
+        console.error('WS STT error:', msg.text);
+        stopMicAndWs();
+        setIsListening(false);
         setStatusText('STT ERROR');
         if (voiceModeRef.current) setTimeout(() => { if (voiceModeRef.current) startListening(); }, 1000);
       }
     };
 
-    mediaRecRef.current = recorder;
-    recorder.start();
+    ws.onerror = () => {
+      stopMicAndWs();
+      setIsListening(false);
+      setStatusText('STT ERROR');
+      if (voiceModeRef.current) setTimeout(() => { if (voiceModeRef.current) startListening(); }, 1000);
+    };
 
-    // Auto-stop after 10 seconds of silence / max recording
-    setTimeout(() => {
-      if (recorder.state === 'recording') recorder.stop();
-    }, 10000);
+    ws.onclose = () => {
+      // If transcript accumulated but no 'done' event, submit what we have
+      const text = transcriptRef.current.trim();
+      if (text) {
+        setIsListening(false);
+        handleSearchRef.current(text);
+      }
+    };
+  }, [stopMicAndWs]);
+
+  // ── TTS — speak text aloud via ElevenLabs ────────────────────────────────
+
+  const stopTts = useCallback(() => {
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current.src = '';
+      ttsAudioRef.current = null;
+    }
   }, []);
 
-  // ── TTS — speak text aloud (Web Speech for now, ElevenLabs later) ─────────
-
-  const speak = useCallback((text: string) => {
+  const speak = useCallback(async (text: string) => {
     if (!voiceModeRef.current || !text) return;
-    window.speechSynthesis.cancel();
-    ensureAudioCtx();
+    stopTts();
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    utterance.rate = 1.05;
-    utterance.pitch = 0.9;
+    const { ctx, analyser } = ensureAudioCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
 
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-      setStatusText('AGENT SPEAKING . . .');
-    };
-    utterance.onend = () => {
+    setIsSpeaking(true);
+    setStatusText('AGENT SPEAKING . . .');
+
+    try {
+      const resp = await fetch('http://localhost:8000/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!resp.ok) throw new Error(`TTS ${resp.status}`);
+
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      ttsAudioRef.current = audio;
+
+      // Connect to analyser so the orb reacts to the actual voice
+      const source = ctx.createMediaElementSource(audio);
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+
+      audio.onended = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(url);
+        ttsAudioRef.current = null;
+        if (voiceModeRef.current) {
+          setStatusText('LISTENING . . .');
+          startListening();
+        }
+      };
+
+      audio.onerror = () => {
+        console.error('TTS playback error');
+        setIsSpeaking(false);
+        URL.revokeObjectURL(url);
+        ttsAudioRef.current = null;
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error('TTS error:', err);
       setIsSpeaking(false);
       if (voiceModeRef.current) {
         setStatusText('LISTENING . . .');
         startListening();
       }
-    };
-
-    window.speechSynthesis.speak(utterance);
-  }, [ensureAudioCtx, startListening]);
+    }
+  }, [ensureAudioCtx, startListening, stopTts]);
 
   // ── Toggle voice mode ─────────────────────────────────────────────────────
 
@@ -213,17 +288,15 @@ export default function IntelPage() {
       setVoiceMode(false);
       setIsListening(false);
       setIsSpeaking(false);
-      window.speechSynthesis.cancel();
-      if (mediaRecRef.current && mediaRecRef.current.state !== 'inactive') {
-        mediaRecRef.current.stop();
-      }
+      stopTts();
+      stopMicAndWs();
       setStatusText('READY');
     } else {
       setVoiceMode(true);
       ensureAudioCtx();
       startListening();
     }
-  }, [voiceMode, ensureAudioCtx, startListening]);
+  }, [voiceMode, ensureAudioCtx, startListening, stopMicAndWs, stopTts]);
 
   // ── Speak briefing when it completes in voice mode ────────────────────────
 

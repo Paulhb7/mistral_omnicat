@@ -1,16 +1,19 @@
 """
 FastAPI server — exposes the orchestrator via SSE streaming.
 """
+import asyncio
 import json
 import logging
 import os
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from mistralai import Mistral
+from mistralai.models import AudioFormat, TranscriptionStreamTextDelta, TranscriptionStreamDone, RealtimeTranscriptionError, RealtimeTranscriptionSessionCreated
 
 from agents.orchestrator import stream_orchestrator
 
@@ -37,6 +40,10 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
     session_id: str
+
+
+class TTSRequest(BaseModel):
+    text: str
 
 
 def _sse(data: dict) -> str:
@@ -76,6 +83,44 @@ async def stream_endpoint(request: ChatRequest):
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 
+@app.post("/tts")
+async def tts_endpoint(request: TTSRequest):
+    """Text-to-speech via ElevenLabs streaming API."""
+    api_key = os.getenv("ELEVENLABS_API_KEY")
+    if not api_key:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "ELEVENLABS_API_KEY not configured"}, status_code=500)
+
+    voice_id = os.getenv("ELEVENLABS_VOICE_ID", "1aBfmKpXXPzK6xmSpeqn")
+
+    async def stream_audio():
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            async with client.stream(
+                "POST",
+                f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream",
+                headers={
+                    "xi-api-key": api_key,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "text": request.text,
+                    "model_id": "eleven_turbo_v2_5",
+                    "voice_settings": {
+                        "stability": 0.5,
+                        "similarity_boost": 0.75,
+                    },
+                },
+            ) as response:
+                if response.status_code != 200:
+                    error_body = await response.aread()
+                    logger.error(f"ElevenLabs TTS error {response.status_code}: {error_body}")
+                    return
+                async for chunk in response.aiter_bytes(1024):
+                    yield chunk
+
+    return StreamingResponse(stream_audio(), media_type="audio/mpeg")
+
+
 @app.post("/stt")
 async def stt_endpoint(file: UploadFile = File(...)):
     """
@@ -102,6 +147,78 @@ async def stt_endpoint(file: UploadFile = File(...)):
 
     result = resp.json()
     return {"text": result.get("text", "")}
+
+
+@app.websocket("/ws/stt")
+async def ws_stt(ws: WebSocket):
+    """
+    Realtime STT via Voxtral WebSocket.
+    Frontend streams raw PCM s16le 16kHz mono audio frames.
+    Backend forwards to Mistral realtime API, sends back text deltas.
+    """
+    await ws.accept()
+
+    api_key = os.getenv("MISTRAL_API_KEY")
+    if not api_key:
+        await ws.send_json({"type": "error", "text": "MISTRAL_API_KEY not configured"})
+        await ws.close()
+        return
+
+    audio_queue: asyncio.Queue[bytes | None] = asyncio.Queue(maxsize=100)
+
+    async def audio_stream():
+        while True:
+            chunk = await audio_queue.get()
+            if chunk is None:
+                return
+            yield chunk
+
+    async def receive_audio():
+        try:
+            while True:
+                data = await ws.receive_bytes()
+                await audio_queue.put(data)
+        except WebSocketDisconnect:
+            await audio_queue.put(None)
+        except Exception:
+            await audio_queue.put(None)
+
+    recv_task = asyncio.create_task(receive_audio())
+
+    try:
+        client = Mistral(api_key=api_key)
+        audio_format = AudioFormat(encoding="pcm_s16le", sample_rate=16000)
+
+        async for event in client.audio.realtime.transcribe_stream(
+            audio_stream=audio_stream(),
+            model="voxtral-mini-transcribe-realtime-2602",
+            audio_format=audio_format,
+            target_streaming_delay_ms=480,
+        ):
+            if isinstance(event, RealtimeTranscriptionSessionCreated):
+                await ws.send_json({"type": "session_created"})
+            elif isinstance(event, TranscriptionStreamTextDelta):
+                await ws.send_json({"type": "text_delta", "text": event.text})
+            elif isinstance(event, TranscriptionStreamDone):
+                await ws.send_json({"type": "done"})
+                break
+            elif isinstance(event, RealtimeTranscriptionError):
+                await ws.send_json({"type": "error", "text": str(event)})
+                break
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.error(f"WS STT error: {e}")
+        try:
+            await ws.send_json({"type": "error", "text": str(e)})
+        except Exception:
+            pass
+    finally:
+        recv_task.cancel()
+        try:
+            await ws.close()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
