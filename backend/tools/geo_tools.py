@@ -31,18 +31,18 @@ _ISO2_TO_ISO3 = {
 }
 
 _WMO_CODES = {
-    0: "Ciel dégagé", 1: "Plutôt dégagé", 2: "Partiellement nuageux", 3: "Couvert",
-    45: "Brouillard", 48: "Brouillard givrant",
-    51: "Bruine légère", 53: "Bruine", 55: "Bruine forte",
-    61: "Pluie légère", 63: "Pluie", 65: "Pluie forte",
-    71: "Neige légère", 73: "Neige", 75: "Neige forte",
-    80: "Averses", 81: "Averses modérées", 82: "Averses violentes",
-    95: "Orage", 96: "Orage avec grêle", 99: "Orage violent avec grêle",
+    0: "Clear sky", 1: "Mostly clear", 2: "Partly cloudy", 3: "Overcast",
+    45: "Fog", 48: "Freezing fog",
+    51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle",
+    61: "Light rain", 63: "Rain", 65: "Heavy rain",
+    71: "Light snow", 73: "Snow", 75: "Heavy snow",
+    80: "Showers", 81: "Moderate showers", 82: "Violent showers",
+    95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Severe thunderstorm with hail",
 }
 
 
 async def _geocode_location(location: str) -> dict:
-    """Logique brute de geocodage, appelable directement depuis l'orchestrateur."""
+    """Core geocoding logic, callable directly from the orchestrator."""
     async with httpx.AsyncClient() as client:
         r = await client.get(
             "https://nominatim.openstreetmap.org/search",
@@ -53,7 +53,7 @@ async def _geocode_location(location: str) -> dict:
         data = r.json()
 
     if not data:
-        return {"error": f"Lieu '{location}' introuvable."}
+        return {"error": f"Location '{location}' not found."}
 
     item = data[0]
     address = item.get("address", {})
@@ -71,7 +71,7 @@ async def _geocode_location(location: str) -> dict:
 
 
 async def _get_weather(lat: float, lng: float) -> dict:
-    """Logique brute de meteo, appelable directement depuis l'orchestrateur."""
+    """Core weather logic, callable directly from the orchestrator."""
     async with httpx.AsyncClient() as client:
         r = await client.get(
             "https://api.open-meteo.com/v1/forecast",
@@ -90,7 +90,7 @@ async def _get_weather(lat: float, lng: float) -> dict:
 
     return {
         "temperature_c": current.get("temperature_2m"),
-        "condition": _WMO_CODES.get(current.get("weather_code", -1), "Inconnu"),
+        "condition": _WMO_CODES.get(current.get("weather_code", -1), "Unknown"),
         "wind_kmh": current.get("wind_speed_10m"),
         "humidity_pct": current.get("relative_humidity_2m"),
     }
@@ -98,26 +98,26 @@ async def _get_weather(lat: float, lng: float) -> dict:
 
 @tool
 async def geocode_location(location: str) -> dict:
-    """Convertit un nom de lieu (ville, pays, region, port, aeroport) en coordonnees latitude/longitude.
+    """Convert a place name (city, country, region, port, airport) to latitude/longitude coordinates.
 
     Args:
-        location: Nom du lieu a geocoder (ex: "Marseille", "Strait of Gibraltar", "Aeroport CDG").
+        location: Place name to geocode (e.g. "Marseille", "Strait of Gibraltar", "CDG Airport").
 
     Returns:
-        Coordonnees et informations du lieu (lat, lng, pays, codes ISO).
+        Coordinates and location info (lat, lng, country, ISO codes).
     """
     return await _geocode_location(location)
 
 
 @tool
 async def get_weather(lat: float, lng: float) -> dict:
-    """Recupere les conditions meteo actuelles pour une position geographique.
+    """Retrieve current weather conditions for a geographic position.
 
     Args:
-        lat: Latitude du lieu (ex: 43.296).
-        lng: Longitude du lieu (ex: 5.369).
+        lat: Latitude of the location (e.g. 43.296).
+        lng: Longitude of the location (e.g. 5.369).
 
     Returns:
-        Conditions meteo actuelles (temperature, vent, humidite, description).
+        Current weather conditions (temperature, wind, humidity, description).
     """
     return await _get_weather(lat, lng)

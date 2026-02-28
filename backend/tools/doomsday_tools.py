@@ -1,6 +1,6 @@
 """
-Doomsday tools — Catastrophes naturelles : evenements climatiques et seismes.
-APIs : NASA EONET · USGS
+Doomsday tools — Natural hazards: climate events and earthquakes.
+APIs: NASA EONET · USGS
 """
 from datetime import datetime, timedelta, timezone
 
@@ -10,15 +10,15 @@ from strands import tool
 
 @tool
 async def get_climate_events(lat: float, lng: float, radius_km: int = 800) -> dict:
-    """Recupere les evenements climatiques actifs (feux, tempetes, inondations, volcans) pres d'une position via NASA EONET.
+    """Retrieve active climate events (wildfires, storms, floods, volcanoes) near a position via NASA EONET.
 
     Args:
-        lat: Latitude du centre de recherche.
-        lng: Longitude du centre de recherche.
-        radius_km: Rayon de recherche en km (defaut: 800).
+        lat: Latitude of the search center.
+        lng: Longitude of the search center.
+        radius_km: Search radius in km (default: 800).
 
     Returns:
-        Evenements climatiques actifs avec categorie, localisation et date.
+        Active climate events with category, location and date.
     """
     deg = radius_km / 111.0
     bbox = f"{lng - deg},{lat - deg},{lng + deg},{lat + deg}"
@@ -62,16 +62,16 @@ async def get_climate_events(lat: float, lng: float, radius_km: int = 800) -> di
 
 @tool
 async def get_earthquakes(lat: float, lng: float, radius_km: int = 800, min_magnitude: float = 2.0) -> dict:
-    """Recupere les seismes recents (30 derniers jours) pres d'une position via USGS.
+    """Retrieve recent earthquakes (last 30 days) near a position via USGS.
 
     Args:
-        lat: Latitude du centre de recherche.
-        lng: Longitude du centre de recherche.
-        radius_km: Rayon de recherche en km (defaut: 800).
-        min_magnitude: Magnitude minimale (defaut: 2.0).
+        lat: Latitude of the search center.
+        lng: Longitude of the search center.
+        radius_km: Search radius in km (default: 800).
+        min_magnitude: Minimum magnitude (default: 2.0).
 
     Returns:
-        Liste des seismes avec magnitude, lieu, profondeur et date.
+        List of earthquakes with magnitude, location, depth and date.
     """
     start = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S")
 

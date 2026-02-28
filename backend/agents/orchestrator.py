@@ -1,8 +1,8 @@
 """
-Orchestrateur — Route les requêtes vers les agents spécialistes.
+Orchestrator — Routes queries to specialist agents.
 
-Pattern old_v2 : un LLM routeur léger décide quel(s) agent(s) appeler,
-puis les spécialistes gèrent tout (geocodage, météo, etc.) via leurs propres tools.
+A lightweight LLM router decides which agent(s) to call,
+then the specialists handle everything (geocoding, weather, etc.) via their own tools.
 """
 import asyncio
 import os
@@ -18,19 +18,19 @@ from agents.solar_system_agent import create_solar_system_agent
 from agents.conflict_agent import create_conflict_agent
 
 
-_ROUTING_PROMPT = """Tu es un routeur de requêtes pour un système d'intelligence OSINT.
+_ROUTING_PROMPT = """You are a query router for an OSINT intelligence system.
 
-En fonction du message de l'utilisateur, réponds avec UN OU PLUSIEURS mots parmi :
-- maritime   → bateaux, navires, ports, trafic maritime, MMSI, AIS
-- aviation   → avions, vols, aéroports, trafic aérien, ICAO
-- doomsday   → risques naturels, séismes, climat, météo, volcans, inondations, feux
-- conflict   → conflits armés, guerres, actualités, géopolitique, manifestations, news
-- solar_system → soleil, éruptions solaires, astéroïdes, système solaire, espace, météo spatiale, NEO
+Based on the user's message, respond with ONE OR MORE words from:
+- maritime   → boats, ships, ports, maritime traffic, MMSI, AIS
+- aviation   → aircraft, flights, airports, air traffic, ICAO
+- doomsday   → natural hazards, earthquakes, climate, weather, volcanoes, floods, wildfires
+- conflict   → armed conflicts, wars, news, geopolitics, protests, current events
+- solar_system → sun, solar flares, asteroids, solar system, space, space weather, NEO
 
-Règles :
-- Réponds UNIQUEMENT avec les mots séparés par des espaces. Pas d'explication.
-- Si la requête concerne plusieurs domaines ou est générique (ex: "analyse la zone de Marseille"), réponds : maritime aviation doomsday conflict
-- Si tu ne sais pas, réponds : maritime aviation doomsday conflict"""
+Rules:
+- Respond ONLY with words separated by spaces. No explanation.
+- If the query spans multiple domains or is generic (e.g. "analyze the Marseille area"), respond: maritime aviation doomsday conflict
+- If unsure, respond: maritime aviation doomsday conflict"""
 
 
 def _get_router_agent() -> Agent:
@@ -47,7 +47,7 @@ def _get_router_agent() -> Agent:
 
 
 def _parse_routing(text: str) -> list[str]:
-    """Extrait les noms d'agents depuis la réponse du routeur."""
+    """Extract agent names from the router's response."""
     valid = {"maritime", "aviation", "doomsday", "conflict", "solar_system"}
     found = [w for w in re.findall(r"\b(maritime|aviation|doomsday|conflict|solar_system)\b", text.lower())]
     return list(dict.fromkeys(found)) if found else list(valid)
@@ -63,30 +63,30 @@ _SPECIALISTS = {
 
 
 async def _run_agent(agent: Agent, query: str) -> str:
-    """Lance un agent dans un thread séparé pour ne pas bloquer le event loop."""
+    """Run an agent in a separate thread to avoid blocking the event loop."""
     try:
         result = await asyncio.to_thread(agent, query)
         return str(result)
     except Exception as e:
-        return f"[Erreur] {e}"
+        return f"[Error] {e}"
 
 
 async def run_orchestrator(user_query: str) -> str:
     """
-    Point d'entrée principal.
+    Main entry point.
 
-    1. Le routeur LLM décide quel(s) agent(s) appeler
-    2. Les spécialistes sont lancés en parallèle
-    3. Les résultats sont assemblés en briefing
+    1. The LLM router decides which agent(s) to call
+    2. Specialists are launched in parallel
+    3. Results are assembled into a briefing
     """
-    # Étape 1 : Routing
+    # Step 1: Routing
     router = _get_router_agent()
     routing_result = await asyncio.to_thread(router, user_query)
     agents_to_call = _parse_routing(str(routing_result))
 
-    print(f"[Orchestrateur] Agents sélectionnés : {', '.join(agents_to_call)}")
+    print(f"[Orchestrator] Selected agents: {', '.join(agents_to_call)}")
 
-    # Étape 2 : Lancer les spécialistes en parallèle
+    # Step 2: Launch specialists in parallel
     tasks = {}
     for name in agents_to_call:
         factory = _SPECIALISTS[name]
@@ -96,17 +96,17 @@ async def run_orchestrator(user_query: str) -> str:
     results = await asyncio.gather(*tasks.values())
     agent_results = dict(zip(tasks.keys(), results))
 
-    # Étape 3 : Formater le briefing
+    # Step 3: Format the briefing
     return _format_briefing(user_query, agent_results)
 
 
 def _format_briefing(query: str, results: dict[str, str]) -> str:
-    """Formate le briefing final."""
+    """Format the final briefing."""
     labels = {
         "maritime": "🚢 MARITIME",
         "aviation": "✈️  AVIATION",
-        "doomsday": "💀 DOOMSDAY — RISQUES NATURELS",
-        "conflict": "⚔️  CONFLICT — GÉOPOLITIQUE & NEWS",
+        "doomsday": "💀 DOOMSDAY — NATURAL HAZARDS",
+        "conflict": "⚔️  CONFLICT — GEOPOLITICS & NEWS",
         "solar_system": "☀️  SOLAR SYSTEM",
     }
 

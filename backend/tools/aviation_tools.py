@@ -11,17 +11,17 @@ async def search_aircraft_in_area(
     lon_max: float,
     api_key: Optional[str] = None
 ) -> List[Dict]:
-    """Recherche les avions dans une zone géographique via OpenSky Network ou ADS-B Exchange.
+    """Search for aircraft in a geographic area via OpenSky Network or ADS-B Exchange.
 
     Args:
-        lat_min: Latitude minimale de la zone (ex: 48.0 pour Paris).
-        lat_max: Latitude maximale.
-        lon_min: Longitude minimale.
-        lon_max: Longitude maximale.
-        api_key: Clé API pour OpenSky (optionnel, utilise ADS-B Exchange si absent).
+        lat_min: Minimum latitude of the area (e.g. 48.0 for Paris).
+        lat_max: Maximum latitude.
+        lon_min: Minimum longitude.
+        lon_max: Maximum longitude.
+        api_key: OpenSky API key (optional, uses ADS-B Exchange if absent).
 
     Returns:
-        Liste d'avions avec leurs infos (ICAO, numéro de vol, position, altitude, vitesse).
+        List of aircraft with their info (ICAO, flight number, position, altitude, speed).
     """
     if api_key:
         url = "https://opensky-network.org/api/states/all"
@@ -65,14 +65,14 @@ async def search_aircraft_in_area(
 
 @tool
 async def get_aircraft_details(icao24: str, api_key: Optional[str] = None) -> Dict:
-    """Récupère les détails d'un aéronef via son adresse ICAO24.
+    """Retrieve aircraft details via its ICAO24 address.
 
     Args:
-        icao24: Adresse ICAO24 de l'avion (ex: "ABC123").
-        api_key: Clé OpenSky (optionnel, utilise des données statiques si absent).
+        icao24: ICAO24 address of the aircraft (e.g. "ABC123").
+        api_key: OpenSky key (optional, uses static data if absent).
 
     Returns:
-        Détails de l'avion (type, compagnie, historique, etc.).
+        Aircraft details (type, airline, history, etc.).
     """
     if api_key:
         async with httpx.AsyncClient() as client:
@@ -89,13 +89,13 @@ async def get_aircraft_details(icao24: str, api_key: Optional[str] = None) -> Di
 
 @tool
 async def check_aircraft_risk(icao24: str) -> Dict:
-    """Vérifie si un aéronef est associé à des risques (sanctions, dark activity).
+    """Check if an aircraft is associated with risks (sanctions, dark activity).
 
     Args:
-        icao24: Adresse ICAO24 de l'avion.
+        icao24: ICAO24 address of the aircraft.
 
     Returns:
-        Score de risque et alertes (ex: sanctions, comportements suspects).
+        Risk score and alerts (e.g. sanctions, suspicious behavior).
     """
     sanctioned_aircrafts = ["ABC123", "DEF456"]
     risk_score = 0
@@ -103,12 +103,12 @@ async def check_aircraft_risk(icao24: str) -> Dict:
 
     if icao24 in sanctioned_aircrafts:
         risk_score = 100
-        alerts.append("Aéronef sous sanctions internationales.")
+        alerts.append("Aircraft under international sanctions.")
 
     anomalies = _detect_anomalies(icao24)
     if anomalies:
         risk_score += 30
-        alerts.append(f"Comportements suspects détectés : {len(anomalies)} anomalies.")
+        alerts.append(f"Suspicious behavior detected: {len(anomalies)} anomalies.")
 
     return {
         "icao24": icao24,
@@ -118,5 +118,5 @@ async def check_aircraft_risk(icao24: str) -> Dict:
 
 
 def _detect_anomalies(icao24: str) -> List[Dict]:
-    """Détecte les comportements suspects (simplifié)."""
+    """Detect suspicious behavior (simplified)."""
     return []

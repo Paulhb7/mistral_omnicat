@@ -1,5 +1,5 @@
 """
-FastAPI server — expose l'orchestrateur via SSE streaming.
+FastAPI server — exposes the orchestrator via SSE streaming.
 """
 import asyncio
 import json
@@ -59,12 +59,12 @@ async def stream_endpoint(request: ChatRequest):
     SSE streaming endpoint.
 
     Events:
-    - tool_start / tool_end : lifecycle des tools
-    - agent_selected       : quel agent tourne
-    - location             : coordonnées géocodées
-    - content              : texte du briefing (accumulé)
-    - error                : erreur
-    - [DONE]               : fin du stream
+    - tool_start / tool_end : tool lifecycle
+    - agent_selected       : which agent is running
+    - location             : geocoded coordinates
+    - content              : briefing text (accumulated)
+    - error                : error
+    - [DONE]               : end of stream
     """
 
     async def generate():
@@ -75,7 +75,7 @@ async def stream_endpoint(request: ChatRequest):
             yield _sse({"type": "tool_end", "tool": "geocode_location"})
 
             if "error" in geo:
-                yield _sse({"type": "content", "data": f"Lieu introuvable. Dispatch direct...\n\n"})
+                yield _sse({"type": "content", "data": f"Location not found. Direct dispatch...\n\n"})
                 maritime_agent = create_maritime_agent()
                 aviation_agent = create_aviation_agent()
                 doomsday_agent = create_doomsday_agent()
@@ -111,19 +111,19 @@ async def stream_endpoint(request: ChatRequest):
 
             bbox_offset = 0.2
             maritime_query = (
-                f"Surveille la zone autour de {location_name} "
-                f"(bbox [{lat - bbox_offset}, {lng - bbox_offset}] à "
+                f"Monitor the area around {location_name} "
+                f"(bbox [{lat - bbox_offset}, {lng - bbox_offset}] to "
                 f"[{lat + bbox_offset}, {lng + bbox_offset}]). "
-                f"Liste les navires présents."
+                f"List vessels present."
             )
             aviation_query = (
-                f"Recherche les avions dans la zone de {location_name} "
+                f"Search for aircraft in the {location_name} area "
                 f"(lat_min={lat - bbox_offset}, lat_max={lat + bbox_offset}, "
                 f"lon_min={lng - bbox_offset}, lon_max={lng + bbox_offset})."
             )
             doomsday_query = (
-                f"Analyse les risques naturels et securitaires autour de "
-                f"{location_name} (lat={lat}, lng={lng}, pays={country})."
+                f"Analyze natural and security risks around "
+                f"{location_name} (lat={lat}, lng={lng}, country={country})."
             )
 
             maritime_agent = create_maritime_agent()
@@ -149,21 +149,21 @@ async def stream_endpoint(request: ChatRequest):
 
             # Step 3: Build and stream the briefing
             briefing = f"# Briefing OSINT — {location_name}, {country}\n\n"
-            briefing += f"**Coordonnées** : {lat:.4f}, {lng:.4f}\n\n"
+            briefing += f"**Coordinates**: {lat:.4f}, {lng:.4f}\n\n"
 
             if weather_result:
                 briefing += (
-                    f"**Météo** : {weather_result.get('condition', '?')} | "
+                    f"**Weather**: {weather_result.get('condition', '?')} | "
                     f"{weather_result.get('temperature_c', '?')}°C | "
-                    f"Vent {weather_result.get('wind_kmh', '?')} km/h | "
-                    f"Humidité {weather_result.get('humidity_pct', '?')}%\n\n"
+                    f"Wind {weather_result.get('wind_kmh', '?')} km/h | "
+                    f"Humidity {weather_result.get('humidity_pct', '?')}%\n\n"
                 )
 
             yield _sse({"type": "content", "data": briefing})
 
             yield _sse({"type": "content", "data": f"---\n\n## Maritime\n\n{maritime_result}\n\n"})
             yield _sse({"type": "content", "data": f"---\n\n## Aviation\n\n{aviation_result}\n\n"})
-            yield _sse({"type": "content", "data": f"---\n\n## Doomsday — Risques & Menaces\n\n{doomsday_result}\n\n"})
+            yield _sse({"type": "content", "data": f"---\n\n## Doomsday — Risks & Threats\n\n{doomsday_result}\n\n"})
 
             yield "data: [DONE]\n\n"
 

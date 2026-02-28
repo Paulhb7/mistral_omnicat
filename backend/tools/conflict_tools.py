@@ -1,6 +1,6 @@
 """
-Outils d'intelligence geopolitique — conflits armes et actualites.
-Sources : ACLED (conflits) · GDELT (news).
+Geopolitical intelligence tools — armed conflicts and news.
+Sources: ACLED (conflicts) · GDELT (news).
 """
 import os
 import urllib.parse
@@ -12,19 +12,19 @@ from strands import tool
 
 @tool
 async def get_conflict_events(country: str, days: int = 30) -> dict:
-    """Recupere les evenements de violence politique, conflits armes, manifestations et emeutes via ACLED.
+    """Retrieve political violence events, armed conflicts, protests and riots via ACLED.
 
     Args:
-        country: Nom du pays en anglais (ex: "France", "Ukraine", "Syria").
-        days: Nombre de jours a remonter (defaut: 30).
+        country: Country name in English (e.g. "France", "Ukraine", "Syria").
+        days: Number of days to look back (default: 30).
 
     Returns:
-        Evenements de conflit avec type, localisation, acteurs et nombre de victimes.
+        Conflict events with type, location, actors and casualty count.
     """
     acled_key = os.getenv("ACLED_API_KEY")
     acled_email = os.getenv("ACLED_EMAIL")
     if not acled_key or not acled_email:
-        return {"available": False, "error": "ACLED_API_KEY et ACLED_EMAIL non configures."}
+        return {"available": False, "error": "ACLED_API_KEY and ACLED_EMAIL not configured."}
 
     start = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
 
@@ -45,13 +45,13 @@ async def get_conflict_events(country: str, days: int = 30) -> dict:
                 timeout=20,
             )
             if r.status_code != 200:
-                return {"available": False, "error": f"ACLED API erreur {r.status_code}"}
+                return {"available": False, "error": f"ACLED API error {r.status_code}"}
             data = r.json()
     except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.TimeoutException):
         return {"available": False, "error": "ACLED API timeout"}
 
     if data.get("message") == "Access denied":
-        return {"available": False, "error": "ACLED acces refuse — verifier la cle API."}
+        return {"available": False, "error": "ACLED access denied — check the API key."}
 
     events = data.get("data", [])
     total_fatalities = sum(int(e.get("fatalities") or 0) for e in events)
@@ -87,13 +87,13 @@ async def get_conflict_events(country: str, days: int = 30) -> dict:
 
 @tool
 async def get_news(location_name: str) -> dict:
-    """Recupere les actualites recentes liees aux crises, conflits et catastrophes pour un lieu via GDELT.
+    """Retrieve recent news related to crises, conflicts and disasters for a location via GDELT.
 
     Args:
-        location_name: Nom du lieu (ville, pays, region) pour la recherche d'actualites.
+        location_name: Location name (city, country, region) for the news search.
 
     Returns:
-        Articles recents avec titre, source, URL et date.
+        Recent articles with title, source, URL and date.
     """
     query = (
         f'"{location_name}" '
@@ -115,7 +115,7 @@ async def get_news(location_name: str) -> dict:
                 timeout=30,
             )
             if r.status_code != 200:
-                return {"total": 0, "articles": [], "error": f"GDELT API erreur {r.status_code}"}
+                return {"total": 0, "articles": [], "error": f"GDELT API error {r.status_code}"}
             data = r.json()
     except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.TimeoutException):
         return {"total": 0, "articles": [], "error": "GDELT API timeout"}

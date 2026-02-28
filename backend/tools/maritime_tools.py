@@ -13,17 +13,17 @@ AISSTREAM_WS_URL = "wss://stream.aisstream.io/v0/stream"
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "maritime_data.db")
 
 NAV_STATUS = {
-    0: "En route (moteur)",
-    1: "Au mouillage",
-    2: "Non commande",
-    3: "Manoeuvrabilite restreinte",
-    4: "Contraint par son tirant d'eau",
-    5: "Amarre",
-    6: "Echoue",
-    7: "En peche",
-    8: "En route (voile)",
-    14: "AIS-SART actif",
-    15: "Non defini",
+    0: "Under way (engine)",
+    1: "At anchor",
+    2: "Not under command",
+    3: "Restricted maneuverability",
+    4: "Constrained by draught",
+    5: "Moored",
+    6: "Aground",
+    7: "Fishing",
+    8: "Under way (sail)",
+    14: "AIS-SART active",
+    15: "Undefined",
 }
 
 
@@ -113,7 +113,7 @@ async def _ws_listener(
                 except json.JSONDecodeError:
                     continue
     except Exception as e:
-        print(f"[AISStream] Erreur: {e}")
+        print(f"[AISStream] Error: {e}")
 
 
 def _store_message(msg: dict):
@@ -173,12 +173,12 @@ def _store_message(msg: dict):
 def _format_vessel_info(pos=None, static=None) -> str:
     lines = []
     if static:
-        lines.append(f"=== {static['ship_name'] or 'Navire inconnu'} ===")
+        lines.append(f"=== {static['ship_name'] or 'Unknown vessel'} ===")
         lines.append(f"  MMSI: {static['mmsi']}")
         if static['imo_number']:
             lines.append(f"  IMO: {static['imo_number']}")
         if static['call_sign']:
-            lines.append(f"  Indicatif: {static['call_sign']}")
+            lines.append(f"  Call sign: {static['call_sign']}")
         if static['vessel_type']:
             lines.append(f"  Type: {static['vessel_type']}")
         if static['destination']:
@@ -187,16 +187,16 @@ def _format_vessel_info(pos=None, static=None) -> str:
             lines.append(f"  ETA: {static['eta_day']:02d}/{static['eta_month']:02d} {static['eta_hour']:02d}:{static['eta_minute']:02d}")
         a, b = static['dimension_a'], static['dimension_b']
         if a and b:
-            lines.append(f"  Longueur: {a + b}m")
+            lines.append(f"  Length: {a + b}m")
     if pos:
         if not static:
-            lines.append(f"=== Navire MMSI {pos['mmsi']} ({pos['ship_name'] or '?'}) ===")
-        nav = NAV_STATUS.get(pos['nav_status'], "Inconnu")
+            lines.append(f"=== Vessel MMSI {pos['mmsi']} ({pos['ship_name'] or '?'}) ===")
+        nav = NAV_STATUS.get(pos['nav_status'], "Unknown")
         lines.append(f"  Position: {pos['latitude']:.5f}, {pos['longitude']:.5f}")
-        lines.append(f"  Vitesse: {pos['sog']} noeuds")
-        lines.append(f"  Cap: {pos['cog']} deg")
-        lines.append(f"  Statut: {nav}")
-        lines.append(f"  Mise a jour: {pos['timestamp_utc']}")
+        lines.append(f"  Speed: {pos['sog']} knots")
+        lines.append(f"  Course: {pos['cog']} deg")
+        lines.append(f"  Status: {nav}")
+        lines.append(f"  Updated: {pos['timestamp_utc']}")
     return "\n".join(lines)
 
 
@@ -204,13 +204,13 @@ def _format_vessel_info(pos=None, static=None) -> str:
 
 @tool
 async def search_vessel(name_or_mmsi: str) -> str:
-    """Recherche un navire par nom ou MMSI. Interroge la base locale puis ecoute le flux AIS en direct si necessaire.
+    """Search for a vessel by name or MMSI. Queries the local database then listens to the live AIS stream if needed.
 
     Args:
-        name_or_mmsi: Le nom du navire (partiel) ou son numero MMSI (9 chiffres).
+        name_or_mmsi: The vessel name (partial) or its MMSI number (9 digits).
 
     Returns:
-        Informations sur le navire trouve (position, identite, statut).
+        Information about the vessel found (position, identity, status).
     """
     _init_db()
     conn = sqlite3.connect(DB_PATH)
@@ -232,7 +232,7 @@ async def search_vessel(name_or_mmsi: str) -> str:
         conn.close()
         api_key = os.getenv("AISSTREAM_API_KEY", "")
         if not api_key:
-            return "Erreur : cle API AISStream manquante (AISSTREAM_API_KEY)."
+            return "Error: AISStream API key missing (AISSTREAM_API_KEY)."
 
         await _ws_listener(
             api_key=api_key,
@@ -251,13 +251,13 @@ async def search_vessel(name_or_mmsi: str) -> str:
         conn.close()
         if pos or static:
             return _format_vessel_info(pos, static)
-        return f"Aucun signal AIS recu pour le MMSI {mmsi} dans les 30 dernieres secondes. Le navire est peut-etre hors couverture."
+        return f"No AIS signal received for MMSI {mmsi} in the last 30 seconds. The vessel may be out of AIS coverage."
     else:
         name_query = name_or_mmsi.strip().upper()
         c.execute("SELECT * FROM vessel_static WHERE ship_name LIKE ?", (f"%{name_query}%",))
         results = c.fetchall()
         if results:
-            lines = [f"{len(results)} navire(s) trouve(s) pour '{name_or_mmsi}' :"]
+            lines = [f"{len(results)} vessel(s) found for '{name_or_mmsi}':"]
             for r in results:
                 c.execute("SELECT * FROM vessel_positions WHERE mmsi=? ORDER BY received_at DESC LIMIT 1", (r['mmsi'],))
                 pos = c.fetchone()
@@ -266,24 +266,24 @@ async def search_vessel(name_or_mmsi: str) -> str:
             conn.close()
             return "\n".join(lines)
         conn.close()
-        return f"Aucun navire nomme '{name_or_mmsi}' en base locale. Essayez avec le MMSI (9 chiffres) pour une recherche en direct."
+        return f"No vessel named '{name_or_mmsi}' found in local database. Try using the MMSI (9 digits) for a live search."
 
 
 @tool
 async def track_vessel_position(mmsi: str, duration_seconds: int = 30) -> str:
-    """Recupere la position en temps reel d'un navire via son MMSI en ecoutant le flux AIS.
+    """Retrieve a vessel's real-time position via its MMSI by listening to the AIS stream.
 
     Args:
-        mmsi: Le numero MMSI du navire (9 chiffres).
-        duration_seconds: Duree d'ecoute en secondes (defaut: 30, max: 120).
+        mmsi: The vessel's MMSI number (9 digits).
+        duration_seconds: Listening duration in seconds (default: 30, max: 120).
 
     Returns:
-        Position actuelle du navire avec vitesse, cap et statut.
+        Current vessel position with speed, course and status.
     """
     _init_db()
     api_key = os.getenv("AISSTREAM_API_KEY", "")
     if not api_key:
-        return "Erreur : variable AISSTREAM_API_KEY non configuree."
+        return "Error: AISSTREAM_API_KEY environment variable not configured."
 
     duration = min(int(duration_seconds), 120)
 
@@ -305,19 +305,19 @@ async def track_vessel_position(mmsi: str, duration_seconds: int = 30) -> str:
 
     if pos:
         return _format_vessel_info(pos, static)
-    return f"Aucun signal AIS recu pour le MMSI {mmsi} pendant {duration}s. Le navire est peut-etre hors couverture AIS."
+    return f"No AIS signal received for MMSI {mmsi} during {duration}s. The vessel may be out of AIS coverage."
 
 
 @tool
 async def get_vessel_history(mmsi: str, limit: int = 20) -> str:
-    """Recupere l'historique des positions d'un navire stocke localement.
+    """Retrieve a vessel's locally stored position history.
 
     Args:
-        mmsi: Le numero MMSI du navire (9 chiffres).
-        limit: Nombre maximum de positions a retourner (defaut: 20).
+        mmsi: The vessel's MMSI number (9 digits).
+        limit: Maximum number of positions to return (default: 20).
 
     Returns:
-        Historique des positions avec horodatage, coordonnees, vitesse et cap.
+        Position history with timestamps, coordinates, speed and course.
     """
     _init_db()
     conn = sqlite3.connect(DB_PATH)
@@ -333,17 +333,17 @@ async def get_vessel_history(mmsi: str, limit: int = 20) -> str:
     conn.close()
 
     if not rows:
-        return f"Aucun historique pour le MMSI {mmsi}. Utilisez track_vessel_position pour commencer a collecter des donnees."
+        return f"No history for MMSI {mmsi}. Use track_vessel_position to start collecting data."
 
-    lines = [f"Historique du navire MMSI {mmsi} ({rows[0]['ship_name'] or 'Inconnu'}) - {len(rows)} positions :"]
+    lines = [f"Vessel MMSI {mmsi} history ({rows[0]['ship_name'] or 'Unknown'}) - {len(rows)} positions:"]
     lines.append("-" * 80)
     for r in rows:
         nav = NAV_STATUS.get(r["nav_status"], "?")
         lines.append(
             f"  {r['timestamp_utc']} | "
             f"Lat: {r['latitude']:.5f}, Lon: {r['longitude']:.5f} | "
-            f"Vitesse: {r['sog']} kn | Cap: {r['cog']} deg | "
-            f"Statut: {nav}"
+            f"Speed: {r['sog']} kn | Course: {r['cog']} deg | "
+            f"Status: {nav}"
         )
     return "\n".join(lines)
 
@@ -357,23 +357,23 @@ async def monitor_area(
     label: str = "",
     duration_seconds: int = 60,
 ) -> str:
-    """Surveille une zone geographique et collecte les donnees AIS de tous les navires presents.
+    """Monitor a geographic area and collect AIS data from all vessels present.
 
     Args:
-        lat_min: Latitude minimale de la zone (ex: 43.0).
-        lon_min: Longitude minimale de la zone (ex: 5.0).
-        lat_max: Latitude maximale de la zone (ex: 44.0).
-        lon_max: Longitude maximale de la zone (ex: 6.0).
-        label: Nom de la zone pour reference (ex: Port de Marseille).
-        duration_seconds: Duree de surveillance en secondes (defaut: 60, max: 300).
+        lat_min: Minimum latitude of the area (e.g. 43.0).
+        lon_min: Minimum longitude of the area (e.g. 5.0).
+        lat_max: Maximum latitude of the area (e.g. 44.0).
+        lon_max: Maximum longitude of the area (e.g. 6.0).
+        label: Area name for reference (e.g. Port of Marseille).
+        duration_seconds: Monitoring duration in seconds (default: 60, max: 300).
 
     Returns:
-        Liste des navires detectes dans la zone avec leurs positions.
+        List of vessels detected in the area with their positions.
     """
     _init_db()
     api_key = os.getenv("AISSTREAM_API_KEY", "")
     if not api_key:
-        return "Erreur : variable AISSTREAM_API_KEY non configuree."
+        return "Error: AISSTREAM_API_KEY environment variable not configured."
 
     duration = min(int(duration_seconds), 300)
     bbox = [[[lat_min, lon_min], [lat_max, lon_max]]]
@@ -409,31 +409,31 @@ async def monitor_area(
     conn.close()
 
     if not rows:
-        return f"Aucun navire detecte dans la zone '{zone_label}' pendant {duration}s."
+        return f"No vessel detected in area '{zone_label}' during {duration}s."
 
     seen = {}
     for r in rows:
         if r["mmsi"] not in seen:
             seen[r["mmsi"]] = r
 
-    lines = [f"Zone '{zone_label}' - {len(seen)} navire(s) detecte(s) en {duration}s :"]
+    lines = [f"Area '{zone_label}' - {len(seen)} vessel(s) detected in {duration}s:"]
     lines.append("-" * 80)
     for mmsi, r in seen.items():
         nav = NAV_STATUS.get(r["nav_status"], "?")
         lines.append(
             f"  MMSI: {r['mmsi']} | Nom: {r['ship_name'] or '?'} | "
             f"Pos: {r['latitude']:.4f}, {r['longitude']:.4f} | "
-            f"Vitesse: {r['sog']} kn | Statut: {nav}"
+            f"Speed: {r['sog']} kn | Status: {nav}"
         )
     return "\n".join(lines)
 
 
 @tool
 async def list_monitored_vessels() -> str:
-    """Liste tous les navires connus en base locale et les zones surveillees.
+    """List all known vessels in the local database and monitored areas.
 
     Returns:
-        Resume des navires trackes et zones surveillees.
+        Summary of tracked vessels and monitored areas.
     """
     _init_db()
     conn = sqlite3.connect(DB_PATH)
@@ -458,25 +458,25 @@ async def list_monitored_vessels() -> str:
     conn.close()
 
     lines = []
-    lines.append(f"=== Navires connus ({len(vessels)}) ===")
+    lines.append(f"=== Known vessels ({len(vessels)}) ===")
     if vessels:
         for v in vessels:
             lines.append(
                 f"  MMSI: {v['mmsi']} | {v['ship_name'] or '?'} | "
                 f"Pos: {v['latitude']:.4f}, {v['longitude']:.4f} | "
-                f"Dest: {v['destination'] or '?'} | Vu: {v['received_at']}"
+                f"Dest: {v['destination'] or '?'} | Seen: {v['received_at']}"
             )
     else:
-        lines.append("  Aucun navire en base.")
+        lines.append("  No vessels in database.")
 
-    lines.append(f"\n=== Zones surveillees ({len(areas)}) ===")
+    lines.append(f"\n=== Monitored areas ({len(areas)}) ===")
     if areas:
         for a in areas:
             lines.append(
                 f"  {a['label']} | [{a['lat_min']},{a['lon_min']}]-[{a['lat_max']},{a['lon_max']}] | "
-                f"Creee: {a['created_at']}"
+                f"Created: {a['created_at']}"
             )
     else:
-        lines.append("  Aucune zone surveillee.")
+        lines.append("  No monitored areas.")
 
     return "\n".join(lines)

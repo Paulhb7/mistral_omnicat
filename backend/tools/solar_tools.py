@@ -1,6 +1,6 @@
 """
-Outils d'intelligence du systeme solaire.
-Sources : NASA DONKI (eruptions solaires) · NASA NeoWs (asteroides proches).
+Solar system intelligence tools.
+Sources: NASA DONKI (solar flares) · NASA NeoWs (near-Earth objects).
 """
 import httpx
 from datetime import datetime, timedelta
@@ -9,13 +9,13 @@ from strands import tool
 
 @tool
 async def get_solar_flares(days: int = 7) -> dict:
-    """Recupere les eruptions solaires recentes depuis NASA DONKI — classe (A/B/C/M/X), timing, pic, region source.
+    """Retrieve recent solar flares from NASA DONKI — class (A/B/C/M/X), timing, peak, source region.
 
     Args:
-        days: Nombre de jours a remonter (defaut: 7, max: 30).
+        days: Number of days to look back (default: 7, max: 30).
 
     Returns:
-        Nombre total d'eruptions et details des plus recentes.
+        Total number of flares and details of the most recent ones.
     """
     start = (datetime.utcnow() - timedelta(days=min(days, 30))).strftime("%Y-%m-%d")
     today = datetime.utcnow().strftime("%Y-%m-%d")
@@ -29,14 +29,14 @@ async def get_solar_flares(days: int = 7) -> dict:
         data = r.json()
 
     if not isinstance(data, list):
-        return {"total": 0, "flares": [], "message": "Aucune eruption solaire detectee."}
+        return {"total": 0, "flares": [], "message": "No solar flares detected."}
 
     flares = [
         {
             "class": f.get("classType", "?"),
-            "debut": (f.get("beginTime") or "")[:16].replace("T", " "),
-            "pic": (f.get("peakTime") or "")[:16].replace("T", " "),
-            "region_source": f.get("sourceLocation", "Region solaire inconnue"),
+            "start": (f.get("beginTime") or "")[:16].replace("T", " "),
+            "peak": (f.get("peakTime") or "")[:16].replace("T", " "),
+            "source_region": f.get("sourceLocation", "Unknown solar region"),
         }
         for f in data[:8]
     ]
@@ -45,13 +45,13 @@ async def get_solar_flares(days: int = 7) -> dict:
 
 @tool
 async def get_near_earth_objects(days: int = 7) -> dict:
-    """Recupere les asteroides et cometes proches de la Terre depuis NASA NeoWs — date d'approche, distance, vitesse, danger.
+    """Retrieve near-Earth asteroids and comets from NASA NeoWs — approach date, distance, speed, hazard.
 
     Args:
-        days: Nombre de jours a scanner (defaut: 7, max: 7).
+        days: Number of days to scan (default: 7, max: 7).
 
     Returns:
-        Nombre total d'objets et details des plus proches.
+        Total number of objects and details of the closest ones.
     """
     today = datetime.utcnow().strftime("%Y-%m-%d")
     end = (datetime.utcnow() + timedelta(days=min(days, 7))).strftime("%Y-%m-%d")
@@ -77,15 +77,15 @@ async def get_near_earth_objects(days: int = 7) -> dict:
     for neo in all_neos[:8]:
         approach = (neo.get("close_approach_data") or [{}])[0]
         neos.append({
-            "nom": neo.get("name", "?").replace("(", "").replace(")", "").strip(),
-            "date_approche": approach.get("close_approach_date", ""),
-            "distance_lunaire": round(
+            "name": neo.get("name", "?").replace("(", "").replace(")", "").strip(),
+            "approach_date": approach.get("close_approach_date", ""),
+            "lunar_distance": round(
                 float(approach.get("miss_distance", {}).get("lunar", 0) or 0), 1
             ),
-            "vitesse_kmh": round(
+            "speed_kmh": round(
                 float(approach.get("relative_velocity", {}).get("kilometers_per_hour", 0) or 0)
             ),
-            "potentiellement_dangereux": neo.get("is_potentially_hazardous_asteroid", False),
+            "potentially_hazardous": neo.get("is_potentially_hazardous_asteroid", False),
         })
 
-    return {"total": len(all_neos), "objets": neos}
+    return {"total": len(all_neos), "objects": neos}
