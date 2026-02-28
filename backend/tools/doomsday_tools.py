@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 import httpx
 from strands import tool
 
+from tools.data_bus import emit as _emit
+
 
 @tool
 async def get_climate_events(lat: float, lng: float, radius_km: int = 800) -> dict:
@@ -57,7 +59,9 @@ async def get_climate_events(lat: float, lng: float, radius_km: int = 800) -> di
     for ev in simplified:
         by_category.setdefault(ev["category"], []).append(ev["title"])
 
-    return {"total": len(events), "events": simplified, "by_category": by_category}
+    result = {"total": len(events), "events": simplified, "by_category": by_category}
+    _emit({"type": "data_get_climate_events", "data": result})
+    return result
 
 
 @tool
@@ -111,4 +115,6 @@ async def get_earthquakes(lat: float, lng: float, radius_km: int = 800, min_magn
     ]
     max_mag = max((q["magnitude"] or 0 for q in quakes), default=0)
 
-    return {"total": len(features), "earthquakes": quakes, "max_magnitude": max_mag}
+    result = {"total": len(features), "earthquakes": quakes, "max_magnitude": max_mag}
+    _emit({"type": "data_get_earthquakes", "data": result})
+    return result

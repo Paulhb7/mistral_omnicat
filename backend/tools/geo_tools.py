@@ -1,6 +1,8 @@
 import httpx
 from strands import tool
 
+from tools.data_bus import emit as _emit
+
 # ISO 3166-1 alpha-2 → alpha-3 mapping
 _ISO2_TO_ISO3 = {
     "af": "AFG", "al": "ALB", "dz": "DZA", "ao": "AGO", "ar": "ARG", "am": "ARM",
@@ -106,7 +108,11 @@ async def geocode_location(location: str) -> dict:
     Returns:
         Coordinates and location info (lat, lng, country, ISO codes).
     """
-    return await _geocode_location(location)
+    result = await _geocode_location(location)
+    if "lat" in result and "lng" in result:
+        _emit({"type": "location", "name": result.get("location", "Unknown"), "lat": result["lat"], "lng": result["lng"]})
+        _emit({"type": "data_geocode_location", "data": result})
+    return result
 
 
 @tool
@@ -120,4 +126,6 @@ async def get_weather(lat: float, lng: float) -> dict:
     Returns:
         Current weather conditions (temperature, wind, humidity, description).
     """
-    return await _get_weather(lat, lng)
+    result = await _get_weather(lat, lng)
+    _emit({"type": "data_get_weather", "data": result})
+    return result

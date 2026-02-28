@@ -21,6 +21,7 @@ from agents.agent_tools import (
     solar_system_analyst,
 )
 from tools.geo_tools import geocode_location, get_weather
+from tools.data_bus import drain as _drain_bus
 
 # Re-export agent factories for backward compatibility (server.py, tests)
 from agents.maritime_agent import create_maritime_agent  # noqa: F401
@@ -37,6 +38,15 @@ def _load_prompt(name: str) -> str:
 
 
 SESSIONS_DIR = Path(__file__).resolve().parent.parent / "sessions"
+
+# Map specialist agent names to frontend agent badges
+_AGENT_MAP = {
+    "maritime_analyst": "maritime",
+    "aviation_analyst": "aviation",
+    "doomsday_analyst": "doomsday",
+    "conflict_analyst": "conflict",
+    "solar_system_analyst": "solar_system",
+}
 
 
 def _get_orchestrator_agent(session_id: str) -> Agent:
@@ -72,12 +82,19 @@ async def stream_orchestrator(user_query: str, session_id: str):
     Main entry point — async generator that yields event dicts as they arrive.
 
     Yielded dicts have a "type" key:
-      - {"type": "content", "data": "..."}   — text chunk
-      - {"type": "tool_start", "tool": "..."} — specialist started
-      - {"type": "tool_end", "tool": "..."}   — specialist finished
+      - {"type": "content", "data": "..."}      — text chunk
+      - {"type": "tool_start", "tool": "..."}    — tool/specialist started
+      - {"type": "tool_end", "tool": "..."}      — tool/specialist finished
+      - {"type": "agent_selected", "agent": "..."} — specialist agent selected
+      - {"type": "location", ...}                — geocoded location (from data bus)
+      - {"type": "data_*", "data": {...}}        — structured tool result (from data bus)
     """
+    # Clear any stale events from previous runs
+    _drain_bus()
+
     orchestrator = _get_orchestrator_agent(session_id)
     active_tool = None
+    emitted_agents = set()
 
     async for event in orchestrator.stream_async(user_query):
         # Detect tool start
@@ -86,19 +103,35 @@ async def stream_orchestrator(user_query: str, session_id: str):
             if tool_name != active_tool:
                 if active_tool is not None:
                     yield {"type": "tool_end", "tool": active_tool}
+                    # Drain data bus after each tool completes — sub-agent tools
+                    # (get_climate_events, get_earthquakes, …) push results here
+                    for bus_event in _drain_bus():
+                        yield bus_event
                 active_tool = tool_name
                 yield {"type": "tool_start", "tool": active_tool}
+
+                # Emit agent_selected for specialist agents
+                if tool_name in _AGENT_MAP and tool_name not in emitted_agents:
+                    emitted_agents.add(tool_name)
+                    yield {"type": "agent_selected", "agent": _AGENT_MAP[tool_name]}
 
         # Text chunk
         if "data" in event:
             if active_tool is not None:
                 yield {"type": "tool_end", "tool": active_tool}
                 active_tool = None
+                # Drain bus one final time after the last tool
+                for bus_event in _drain_bus():
+                    yield bus_event
             yield {"type": "content", "data": event["data"]}
 
     # Close any remaining tool
     if active_tool is not None:
         yield {"type": "tool_end", "tool": active_tool}
+
+    # Final drain — catch anything emitted during the last tool
+    for bus_event in _drain_bus():
+        yield bus_event
 
 
 def _format_briefing(query: str, results: dict[str, str]) -> str:

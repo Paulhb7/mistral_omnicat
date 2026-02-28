@@ -1,304 +1,288 @@
-"use client";
+'use client';
 
-import { useState, useRef, useEffect } from "react";
-import { useChat, ChatMessage } from "@/hooks/use-chat";
-import { ArrowLeft, RotateCcw } from "lucide-react";
-import Link from "next/link";
-import ReactMarkdown from "react-markdown";
+import { useState, useRef, useCallback, useEffect } from 'react';
+import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import { useChat } from '@/hooks/use-chat';
+import { EarthPanel } from '@/components/intel-panels';
+import { SearchBar } from '@/components/search-bar';
+import { BriefingPanel } from '@/components/briefing-panel';
+
+const EarthMap = dynamic(() => import('@/components/earth-map'), { ssr: false });
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const SIDEBAR_W = 360;
+const BRIEF_W = 380;
+
+const TOOL_LABELS: Record<string, string> = {
+  geocode_location:       'GEOCODE \u00b7 location',
+  get_weather:            'OPEN-METEO \u00b7 weather',
+  get_climate_events:     'NASA EONET \u00b7 climate',
+  get_earthquakes:        'USGS \u00b7 seismic',
+  get_news:               'GDELT \u00b7 news intel',
+  get_conflict_events:    'ACLED \u00b7 conflict events',
+  maritime_analyst:       'MARITIME \u00b7 analyst',
+  aviation_analyst:       'AVIATION \u00b7 analyst',
+  doomsday_analyst:       'DOOMSDAY \u00b7 analyst',
+  conflict_analyst:       'CONFLICT \u00b7 analyst',
+  solar_system_analyst:   'SOLAR \u00b7 analyst',
+};
 
 const mono = "'Roboto Mono', monospace";
-const sans = "'Plus Jakarta Sans', system-ui, sans-serif";
 
-function ToolChip({ name, status }: { name: string; status: string }) {
+// ── Main page ────────────────────────────────────────────────────────────────
+
+export default function IntelPage() {
+  const [inputVal, setInputVal]     = useState('');
+  const [statusText, setStatusText] = useState('READY');
+  const [isScanning, setIsScanning] = useState(false);
+  const [briefingVisible, setBriefingVisible] = useState(false);
+
+  const inpRef = useRef<HTMLInputElement>(null);
+
+  const { send, reset, isLoading, briefing, location, tools, panelData, error, agentMode } = useChat();
+
+  // ── Search handler ─────────────────────────────────────────────────────────
+
+  const handleSearch = useCallback(async (q: string) => {
+    const text = q.trim();
+    if (!text) return;
+
+    setIsScanning(true);
+    setStatusText('ROUTING . . .');
+    setBriefingVisible(false);
+
+    await send(text);
+  }, [send]);
+
+  const submitTextQuery = useCallback(() => {
+    handleSearch(inputVal);
+    setInputVal('');
+  }, [handleSearch, inputVal]);
+
+  // ── Sync status from hook state ────────────────────────────────────────────
+
+  useEffect(() => {
+    if (isLoading) {
+      setIsScanning(true);
+      if (agentMode) setStatusText(`${agentMode.toUpperCase()} AGENT \u00b7 SCANNING . . .`);
+      else setStatusText('ROUTING . . .');
+    } else if (location) {
+      setIsScanning(false);
+      const ev = (panelData.climate as { total?: number } | undefined)?.total ?? 0;
+      const qk = (panelData.earthquakes as { total?: number } | undefined)?.total ?? 0;
+      const nw = (panelData.news as { total?: number } | undefined)?.total ?? 0;
+      setStatusText(`${ev} EVENTS \u00b7 ${qk} QUAKES \u00b7 ${nw} NEWS`);
+    } else if (!isLoading) {
+      setIsScanning(false);
+      if (tools.length > 0) setStatusText('COMPLETE');
+      else setStatusText('READY');
+    }
+  }, [isLoading, location, panelData, agentMode, tools.length]);
+
+  // ── Show briefing panel when briefing arrives ──────────────────────────────
+
+  useEffect(() => {
+    if (briefing) setBriefingVisible(true);
+  }, [briefing]);
+
+  // ── Derive panel state ─────────────────────────────────────────────────────
+
+  const hasResults = !isLoading && !!location;
+  const showEmpty = !isLoading && !hasResults && tools.length === 0;
+  const showLoadingChips = isLoading || (tools.length > 0 && !hasResults);
+  const showBriefingPanel = !!briefing && briefingVisible;
+
   return (
-    <span
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 6,
-        padding: "4px 12px",
-        fontSize: 11, letterSpacing: 1,
-        fontFamily: mono,
-        color: status === "running" ? "#fa500f" : "rgba(255,250,235,0.35)",
-        border: `1px solid ${status === "running" ? "rgba(250,80,15,0.3)" : "rgba(255,250,235,0.08)"}`,
-        background: status === "running" ? "rgba(250,80,15,0.06)" : "rgba(255,250,235,0.02)",
-        textTransform: "uppercase",
-      }}
-    >
-      {status === "running" && (
-        <span
-          style={{
-            width: 5, height: 5, borderRadius: "50%",
-            background: "#fa500f", display: "inline-block",
-            animation: "pulse 1.5s ease-in-out infinite",
-          }}
+    <>
+      {/* Background map */}
+      <div style={{
+        position: 'fixed', top: 56, left: SIDEBAR_W,
+        width: showBriefingPanel ? `calc(100vw - ${SIDEBAR_W + BRIEF_W}px)` : `calc(100vw - ${SIDEBAR_W}px)`,
+        height: 'calc(100vh - 56px)', zIndex: 0,
+        transition: 'width 0.4s ease',
+      }}>
+        <EarthMap
+          center={location}
+          climateEvents={(panelData.climate as { events?: Array<{ id: string; title: string; category: string; category_id: string; date: string | null; lat: number | null; lng: number | null }> } | undefined)?.events}
+          earthquakes={(panelData.earthquakes as { earthquakes?: Array<{ magnitude: number; place: string; lat: number; lng: number; depth_km: number; date: string }> } | undefined)?.earthquakes}
+          conflicts={(panelData.conflict as { recent_events?: Array<{ date: string; type: string; location: string; fatalities: number; lat: number | null; lng: number | null }> } | undefined)?.recent_events}
         />
-      )}
-      {status === "done" && (
-        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(255,250,235,0.2)", display: "inline-block" }} />
-      )}
-      {name}
-    </span>
-  );
-}
-
-function MessageBubble({ message }: { message: ChatMessage }) {
-  const isUser = message.role === "user";
-
-  return (
-    <div style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start" }}>
-      <div
-        style={{
-          maxWidth: "75%",
-          padding: "14px 18px",
-          fontSize: 14,
-          lineHeight: 1.7,
-          fontFamily: isUser ? sans : sans,
-          background: isUser ? "rgba(250,80,15,0.08)" : "rgba(255,250,235,0.03)",
-          border: isUser ? "1px solid rgba(250,80,15,0.2)" : "1px solid rgba(255,250,235,0.06)",
-          borderRadius: isUser ? "2px 2px 2px 2px" : "2px",
-          color: isUser ? "#fffaeb" : "rgba(255,250,235,0.75)",
-        }}
-      >
-        {isUser ? (
-          <p style={{ margin: 0 }}>{message.content}</p>
-        ) : (
-          <div>
-            <ReactMarkdown
-              components={{
-                p: ({ children }) => <p style={{ margin: "0 0 8px 0" }}>{children}</p>,
-                h1: ({ children }) => (
-                  <h1 style={{ fontSize: 16, fontWeight: 700, marginTop: 16, marginBottom: 8, color: "#fffaeb" }}>{children}</h1>
-                ),
-                h2: ({ children }) => (
-                  <h2 style={{
-                    fontSize: 11, fontWeight: 600, marginTop: 20, marginBottom: 8,
-                    textTransform: "uppercase", letterSpacing: 2,
-                    color: "#fa500f", fontFamily: mono,
-                  }}>
-                    {children}
-                  </h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 style={{ fontSize: 14, fontWeight: 600, marginTop: 12, marginBottom: 6, color: "#fffaeb" }}>{children}</h3>
-                ),
-                ul: ({ children }) => <ul style={{ paddingLeft: 16, marginBottom: 8 }}>{children}</ul>,
-                ol: ({ children }) => <ol style={{ paddingLeft: 16, marginBottom: 8 }}>{children}</ol>,
-                li: ({ children }) => <li style={{ marginBottom: 3 }}>{children}</li>,
-                strong: ({ children }) => (
-                  <strong style={{ fontWeight: 600, color: "#fffaeb" }}>{children}</strong>
-                ),
-                code: ({ children }) => (
-                  <code style={{
-                    padding: "2px 6px", fontSize: 12,
-                    fontFamily: mono, background: "rgba(250,80,15,0.08)",
-                    border: "1px solid rgba(250,80,15,0.15)",
-                  }}>
-                    {children}
-                  </code>
-                ),
-              }}
-            >
-              {message.content}
-            </ReactMarkdown>
-            {!message.content && (
-              <span
-                style={{
-                  display: "inline-block", width: 8, height: 16,
-                  background: "#fa500f", opacity: 0.6,
-                  animation: "blink 1s infinite",
-                }}
-              />
-            )}
-          </div>
-        )}
       </div>
-    </div>
-  );
-}
 
-export default function ChatPage() {
-  const { messages, tools, isLoading, agentMode, error, send, reset } = useChat();
-  const [input, setInput] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+      {/* HUD corners */}
+      <div style={{ position: 'fixed', top: 64, right: 16, width: 14, height: 14, borderTop: '1px solid rgba(255,250,235,0.25)', borderRight: '1px solid rgba(255,250,235,0.25)', pointerEvents: 'none', zIndex: 75 }} />
+      <div style={{ position: 'fixed', bottom: 16, right: 16, width: 14, height: 14, borderBottom: '1px solid rgba(255,250,235,0.25)', borderRight: '1px solid rgba(255,250,235,0.25)', pointerEvents: 'none', zIndex: 75 }} />
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, tools]);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    send(input);
-    setInput("");
-  };
-
-  return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "#111113", color: "#fffaeb" }}>
-      {/* Header */}
-      <header
-        style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "0 24px", height: 56,
-          borderBottom: "1px solid rgba(255,250,235,0.08)",
-          fontFamily: mono,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Link href="/" style={{ color: "rgba(255,250,235,0.35)", textDecoration: "none", transition: "color 0.15s", display: "flex" }}>
-            <ArrowLeft size={16} />
-          </Link>
-          <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 4, color: "#fa500f" }}>
-            Omni<strong>CAT</strong>
-          </span>
+      {/* Navbar */}
+      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', background: '#111113', borderBottom: '1px solid rgba(255,250,235,0.08)', zIndex: 80, fontFamily: mono }}>
+        <Link href="/" style={{ fontSize: 12, fontWeight: 600, letterSpacing: 4, color: '#fa500f', textDecoration: 'none' }}>
+          Omni<strong>CAT</strong>
+        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 9, letterSpacing: 3, color: 'rgba(255,250,235,0.35)', textTransform: 'uppercase' }}>
+          <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#fa500f', animation: 'pulse 1.6s ease-in-out infinite', flexShrink: 0 }} />
+          {location ? `EARTH \u00b7 ${location.name.toUpperCase()}` : 'INTELLIGENCE MAP'}
           {agentMode && (
-            <span
-              style={{
-                fontSize: 10, letterSpacing: 2,
-                padding: "3px 10px",
-                border: "1px solid rgba(250,80,15,0.3)",
-                background: "rgba(250,80,15,0.06)",
-                color: "#fa500f",
-                textTransform: "uppercase",
-              }}
-            >
-              {agentMode}
+            <span style={{
+              fontSize: 7, letterSpacing: 2, padding: '2px 7px',
+              border: '1px solid rgba(250,80,15,0.4)',
+              color: '#fa500f',
+              textTransform: 'uppercase',
+            }}>
+              {agentMode.toUpperCase()} AGENT
             </span>
           )}
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+          <Link href="/about" style={{ fontSize: 11, letterSpacing: 2, color: 'rgba(255,250,235,0.4)', textDecoration: 'none', textTransform: 'uppercase' }}>About</Link>
+          <button
+            onClick={() => { reset(); setBriefingVisible(false); setStatusText('READY'); }}
+            style={{ background: 'transparent', border: '1px solid rgba(255,250,235,0.08)', color: 'rgba(255,250,235,0.3)', fontFamily: mono, fontSize: 8, letterSpacing: 2, padding: '4px 10px', cursor: 'pointer', textTransform: 'uppercase' }}
+          >
+            RESET
+          </button>
+        </div>
+      </nav>
 
-        <button
-          onClick={reset}
-          style={{
-            background: "none", border: "none", cursor: "pointer",
-            color: "rgba(255,250,235,0.25)", transition: "color 0.15s",
-            display: "flex", alignItems: "center",
-          }}
-          title="New briefing"
-        >
-          <RotateCcw size={14} />
-        </button>
-      </header>
+      {/* Sidebar */}
+      <div style={{ position: 'fixed', top: 56, left: 0, bottom: 0, width: SIDEBAR_W, background: '#111113', borderRight: '1px solid rgba(255,250,235,0.08)', display: 'flex', flexDirection: 'column', zIndex: 70, fontFamily: mono }}>
 
-      {/* Messages */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px" }}>
-        {messages.length === 0 && !isLoading && (
-          <div style={{
-            height: "100%", display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center", textAlign: "center",
-          }}>
-            <h2 style={{
-              fontSize: "clamp(32px, 5vw, 48px)", fontWeight: 700,
-              letterSpacing: "-0.03em", marginBottom: 8,
-              fontFamily: sans,
-            }}>
-              Omni<span style={{ color: "#fa500f" }}>CAT</span>
-            </h2>
-            <p style={{
-              fontSize: 13, color: "rgba(255,250,235,0.35)",
-              fontFamily: mono, letterSpacing: 1, marginBottom: 32,
-            }}>
-              Give me a location, I&apos;ll run the briefing.
-            </p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-              {["Analyze Marseille", "Strait of Gibraltar area", "Situation in Odessa"].map(
-                (q) => (
+        {/* Content area */}
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+          {/* Empty state */}
+          {showEmpty && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: '32px 24px', textAlign: 'center' }}>
+              {/* Concentric rings */}
+              <div style={{ position: 'relative', width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(250,80,15,0.18)', animation: 'pulse 2.4s ease-in-out infinite' }} />
+                <div style={{ position: 'absolute', inset: 10, borderRadius: '50%', border: '1px solid rgba(250,80,15,0.35)', animation: 'pulse 2.4s ease-in-out infinite 0.4s' }} />
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#fa500f', animation: 'pulse 1.6s ease-in-out infinite' }} />
+              </div>
+
+              <div style={{ fontSize: 28, color: 'rgba(255,250,235,0.12)' }}>{'\u25ce'}</div>
+              <div style={{ fontSize: 10, letterSpacing: 2, lineHeight: 2, color: 'rgba(255,250,235,0.22)', textTransform: 'uppercase' }}>
+                Ask about any location<br />or enter a query
+              </div>
+              <div style={{ fontSize: 8, color: 'rgba(255,250,235,0.1)', letterSpacing: 1 }}>
+                paris {'\u00b7'} california {'\u00b7'} tokyo {'\u00b7'} odessa
+              </div>
+
+              {/* Quick action buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8, width: '100%', maxWidth: 260 }}>
+                {['Analyze Marseille', 'Strait of Gibraltar area', 'Situation in Odessa'].map(q => (
                   <button
                     key={q}
-                    onClick={() => send(q)}
+                    onClick={() => { handleSearch(q); setInputVal(''); }}
                     style={{
-                      fontSize: 11, padding: "8px 16px", letterSpacing: 1,
-                      background: "transparent",
-                      border: "1px solid rgba(255,250,235,0.1)",
-                      color: "rgba(255,250,235,0.4)",
-                      cursor: "pointer", fontFamily: mono,
-                      textTransform: "uppercase",
-                      transition: "all 0.15s",
+                      background: 'transparent', border: '1px solid rgba(255,250,235,0.06)',
+                      color: 'rgba(255,250,235,0.25)', fontFamily: mono, fontSize: 9,
+                      letterSpacing: 2, padding: '8px 12px', cursor: 'pointer',
+                      textTransform: 'uppercase', textAlign: 'left',
+                      transition: 'all 0.15s',
                     }}
-                    className="hover:border-[rgba(250,80,15,0.3)] hover:text-[#fa500f] hover:bg-[rgba(250,80,15,0.04)]"
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(250,80,15,0.3)'; e.currentTarget.style.color = '#fa500f'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,250,235,0.06)'; e.currentTarget.style.color = 'rgba(255,250,235,0.25)'; }}
                   >
-                    {q}
+                    {'\u2192'} {q}
                   </button>
-                )
-              )}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
-          {messages.map((msg, i) => (
-            <MessageBubble key={i} message={msg} />
-          ))}
-
-          {/* Tool chips */}
-          {tools.length > 0 && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", paddingLeft: 4 }}>
-              {tools.map((t, i) => (
-                <ToolChip key={i} name={t.name} status={t.status} />
+          {/* Loading chips */}
+          {showLoadingChips && (
+            <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {tools.map(chip => (
+                <div key={chip.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 9, letterSpacing: 2, color: chip.status === 'done' ? 'rgba(255,250,235,0.25)' : 'rgba(255,250,235,0.45)', textTransform: 'uppercase' }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#fa500f', animation: chip.status === 'running' ? 'pulse 0.6s ease-in-out infinite' : 'none', opacity: chip.status === 'done' ? 0.2 : 1, flexShrink: 0 }} />
+                  {TOOL_LABELS[chip.name] ?? chip.name}
+                </div>
               ))}
             </div>
           )}
 
-          {/* Error */}
-          {error && (
-            <div style={{
-              fontSize: 12, fontFamily: mono, color: "#ff4444",
-              padding: "8px 12px",
-              border: "1px solid rgba(255,68,68,0.2)",
-              background: "rgba(255,68,68,0.05)",
-            }}>
-              {error}
+          {/* Intel header */}
+          {hasResults && (
+            <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid rgba(255,250,235,0.08)', flexShrink: 0 }}>
+              <div style={{ fontSize: 8, letterSpacing: 4, color: 'rgba(255,250,235,0.45)', textTransform: 'uppercase', marginBottom: 5 }}>Intelligence Brief</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#fa500f', letterSpacing: 1 }}>
+                {location?.name.toUpperCase() ?? '\u2014'}
+              </div>
+              <div style={{ fontSize: 9, color: 'rgba(255,250,235,0.45)', marginTop: 2 }}>
+                {location ? `${location.lat.toFixed(2)}\u00b0N  ${location.lng.toFixed(2)}\u00b0E` : '\u2014'}
+              </div>
             </div>
           )}
 
-          <div ref={bottomRef} />
+          {/* Mini map — shown as soon as geocode returns */}
+          {location && (
+            <div style={{ position: 'relative', height: 175, flexShrink: 0, overflow: 'hidden', borderBottom: '1px solid rgba(255,250,235,0.08)' }}>
+              <iframe
+                key={`${location.lat},${location.lng}`}
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${location.lng - 0.35},${location.lat - 0.22},${location.lng + 0.35},${location.lat + 0.22}&layer=mapnik&marker=${location.lat},${location.lng}`}
+                style={{ width: '100%', height: 220, border: 'none', marginTop: -22, filter: 'invert(1) hue-rotate(180deg) brightness(0.8) saturate(0.9)', display: 'block' }}
+                title="Location map"
+                sandbox="allow-scripts allow-same-origin"
+              />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(to right, rgba(250,80,15,0.5), transparent)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', bottom: 7, left: 10, fontSize: 7, letterSpacing: 2, color: 'rgba(250,80,15,0.75)', textTransform: 'uppercase', pointerEvents: 'none', fontFamily: mono }}>
+                {location.lat.toFixed(4)}{'\u00b0'}N {'\u00b7'} {location.lng.toFixed(4)}{'\u00b0'}E
+              </div>
+              <div style={{ position: 'absolute', top: 7, left: 7, width: 10, height: 10, borderTop: '1px solid rgba(250,80,15,0.5)', borderLeft: '1px solid rgba(250,80,15,0.5)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: 7, right: 7, width: 10, height: 10, borderTop: '1px solid rgba(250,80,15,0.5)', borderRight: '1px solid rgba(250,80,15,0.5)', pointerEvents: 'none' }} />
+            </div>
+          )}
+
+          {/* Events scroll */}
+          {hasResults && (
+            <div id="events-scroll" style={{ overflowY: 'auto', flex: 1, padding: '6px 0' }}>
+              <EarthPanel panelData={panelData} location={location} />
+            </div>
+          )}
+
+          {/* Error state */}
+          {error && (
+            <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,80,0,0.2)', fontSize: 10, color: '#ff4500', lineHeight: 1.6, flexShrink: 0, fontFamily: mono }}>
+              {'\u26a0'} {error}
+            </div>
+          )}
+
+          {/* Footer sources */}
+          {hasResults && (
+            <div style={{ padding: '8px 16px', borderTop: '1px solid rgba(255,250,235,0.08)', fontSize: 7, color: 'rgba(255,250,235,0.12)', letterSpacing: 2, flexShrink: 0 }}>
+              OPEN-METEO {'\u00b7'} NASA EONET {'\u00b7'} USGS {'\u00b7'} GDELT {'\u00b7'} ACLED
+            </div>
+          )}
         </div>
+
+        <SearchBar
+          inputRef={inpRef}
+          value={inputVal}
+          onChange={setInputVal}
+          onSubmit={submitTextQuery}
+          isLoading={isLoading}
+          isScanning={isScanning}
+          statusText={statusText}
+          monoFont={mono}
+        />
       </div>
 
-      {/* Input */}
-      <div style={{ padding: "16px 24px", borderTop: "1px solid rgba(255,250,235,0.08)" }}>
-        <form
-          onSubmit={handleSubmit}
-          style={{ maxWidth: 720, margin: "0 auto", display: "flex", alignItems: "center", gap: 12 }}
-        >
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Analyze the area of..."
-            disabled={isLoading}
-            style={{
-              flex: 1, background: "transparent",
-              border: "1px solid rgba(255,250,235,0.1)",
-              padding: "12px 18px", fontSize: 14,
-              color: "#fffaeb", outline: "none",
-              fontFamily: sans,
-              transition: "border-color 0.15s",
-              opacity: isLoading ? 0.4 : 1,
-            }}
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            style={{
-              width: 44, height: 44,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: input.trim() && !isLoading ? "#fa500f" : "transparent",
-              border: input.trim() && !isLoading ? "none" : "1px solid rgba(255,250,235,0.1)",
-              color: input.trim() && !isLoading ? "#111113" : "rgba(255,250,235,0.2)",
-              cursor: isLoading || !input.trim() ? "default" : "pointer",
-              transition: "all 0.15s",
-              fontFamily: mono, fontSize: 18, fontWeight: 700,
-            }}
-          >
-            →
-          </button>
-        </form>
+      <BriefingPanel
+        show={showBriefingPanel}
+        width={BRIEF_W}
+        briefing={briefing}
+        agentMode={agentMode}
+        monoFont={mono}
+        onClose={() => setBriefingVisible(false)}
+      />
+
+      {/* Watermark */}
+      <div style={{ position: 'fixed', bottom: 10, right: 18, fontSize: 7, letterSpacing: 3, color: 'rgba(255,250,235,0.06)', textTransform: 'uppercase', pointerEvents: 'none', zIndex: 70, fontFamily: mono }}>
+        OmniCAT {'\u00b7'} 2026
       </div>
-    </div>
+    </>
   );
 }

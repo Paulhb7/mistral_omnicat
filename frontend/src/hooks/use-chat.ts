@@ -7,10 +7,33 @@ export interface ChatMessage {
   content: string;
 }
 
-interface ToolStatus {
+export interface ToolStatus {
   name: string;
   status: "running" | "done";
 }
+
+export interface LocationData {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export interface PanelData {
+  weather?: Record<string, unknown>;
+  climate?: Record<string, unknown>;
+  earthquakes?: Record<string, unknown>;
+  news?: Record<string, unknown>;
+  conflict?: Record<string, unknown>;
+}
+
+// Map backend tool names to panel keys
+const TOOL_TO_PANEL: Record<string, keyof PanelData> = {
+  get_weather: 'weather',
+  get_climate_events: 'climate',
+  get_earthquakes: 'earthquakes',
+  get_news: 'news',
+  get_conflict_events: 'conflict',
+};
 
 interface UseChatReturn {
   messages: ChatMessage[];
@@ -18,6 +41,9 @@ interface UseChatReturn {
   isLoading: boolean;
   agentMode: string | null;
   error: string | null;
+  location: LocationData | null;
+  panelData: PanelData;
+  briefing: string | null;
   send: (message: string) => Promise<void>;
   reset: () => void;
 }
@@ -30,6 +56,9 @@ export function useChat(
   const [isLoading, setIsLoading] = useState(false);
   const [agentMode, setAgentMode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [location, setLocation] = useState<LocationData | null>(null);
+  const [panelData, setPanelData] = useState<PanelData>({});
+  const [briefing, setBriefing] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>(crypto.randomUUID());
 
@@ -37,7 +66,6 @@ export function useChat(
     async (message: string) => {
       if (!message.trim() || isLoading) return;
 
-      // Abort previous request if any
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -46,8 +74,10 @@ export function useChat(
       setTools([]);
       setAgentMode(null);
       setIsLoading(true);
+      setLocation(null);
+      setPanelData({});
+      setBriefing(null);
 
-      // Add user message
       setMessages((prev) => [...prev, { role: "user", content: message }]);
 
       let assistantContent = "";
@@ -70,7 +100,6 @@ export function useChat(
         const decoder = new TextDecoder();
         let buffer = "";
 
-        // Add empty assistant message
         setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
         while (true) {
@@ -79,7 +108,6 @@ export function useChat(
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
-          // Keep the last (potentially incomplete) line in the buffer
           buffer = lines.pop() ?? "";
 
           for (const line of lines) {
@@ -93,7 +121,7 @@ export function useChat(
               switch (event.type) {
                 case "tool_start":
                   setTools((prev) => [
-                    ...prev,
+                    ...prev.filter(t => t.name !== event.tool),
                     { name: event.tool, status: "running" },
                   ]);
                   break;
@@ -110,8 +138,13 @@ export function useChat(
                   setAgentMode(event.agent);
                   break;
 
+                case "location":
+                  setLocation({ name: event.name, lat: event.lat, lng: event.lng });
+                  break;
+
                 case "content":
                   assistantContent += event.data;
+                  setBriefing(assistantContent);
                   setMessages((prev) => {
                     const updated = [...prev];
                     updated[updated.length - 1] = {
@@ -125,6 +158,16 @@ export function useChat(
                 case "error":
                   setError(event.message);
                   break;
+
+                default:
+                  // Handle data_* events (data_get_weather, data_get_climate_events, etc.)
+                  if (event.type?.startsWith('data_')) {
+                    const toolName = event.type.slice(5); // strip 'data_'
+                    const panelKey = TOOL_TO_PANEL[toolName];
+                    if (panelKey) {
+                      setPanelData(prev => ({ ...prev, [panelKey]: event.data }));
+                    }
+                  }
               }
             } catch {
               // Ignore JSON parse errors for partial chunks
@@ -150,7 +193,10 @@ export function useChat(
     setIsLoading(false);
     setAgentMode(null);
     setError(null);
+    setLocation(null);
+    setPanelData({});
+    setBriefing(null);
   }, []);
 
-  return { messages, tools, isLoading, agentMode, error, send, reset };
+  return { messages, tools, isLoading, agentMode, error, location, panelData, briefing, send, reset };
 }

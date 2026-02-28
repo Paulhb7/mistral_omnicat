@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, timezone
 import httpx
 from strands import tool
 
+from tools.data_bus import emit as _emit
+
 
 @tool
 async def get_conflict_events(country: str, days: int = 30) -> dict:
@@ -74,7 +76,7 @@ async def get_conflict_events(country: str, days: int = 30) -> dict:
         for e in events[:10]
     ]
 
-    return {
+    result = {
         "available": True,
         "country": country,
         "period_days": days,
@@ -83,6 +85,8 @@ async def get_conflict_events(country: str, days: int = 30) -> dict:
         "by_type": by_type,
         "recent_events": recent,
     }
+    _emit({"type": "data_get_conflict_events", "data": result})
+    return result
 
 
 @tool
@@ -134,4 +138,6 @@ async def get_news(location_name: str) -> dict:
             "date": date,
         })
 
-    return {"total": len(processed), "articles": processed}
+    result = {"total": len(processed), "articles": processed}
+    _emit({"type": "data_get_news", "data": result})
+    return result
