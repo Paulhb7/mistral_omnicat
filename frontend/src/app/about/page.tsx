@@ -1,165 +1,153 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+
+const mono = "'Roboto Mono', monospace";
+const sans = "'Plus Jakarta Sans', system-ui, sans-serif";
 
 const agents = [
-  {
-    icon: "🚢",
-    name: "Maritime",
-    description:
-      "Real-time vessel tracking, port traffic and AIS/MMSI data.",
-    sources: ["AIS Stream"],
-  },
-  {
-    icon: "✈️",
-    name: "Aviation",
-    description:
-      "Flight tracking, air traffic and aircraft identification via ICAO.",
-    sources: ["OpenSky Network"],
-  },
-  {
-    icon: "💀",
-    name: "Doomsday",
-    description:
-      "Natural hazards: earthquakes, climate events, volcanoes, floods, wildfires.",
-    sources: ["NASA EONET", "USGS"],
-  },
-  {
-    icon: "⚔️",
-    name: "Conflict",
-    description:
-      "Armed conflicts, geopolitics, protests and media monitoring.",
-    sources: ["ACLED", "GDELT"],
-  },
-  {
-    icon: "☀️",
-    name: "Solar System",
-    description:
-      "Solar flares, near-Earth objects (NEO) and space weather.",
-    sources: ["NASA DONKI", "NASA NeoWs"],
-  },
+  { icon: "🚢", name: "Maritime", description: "Real-time vessel tracking, port traffic and AIS/MMSI data.", sources: ["AIS Stream"] },
+  { icon: "✈️", name: "Aviation", description: "Flight tracking, air traffic and aircraft identification via ICAO.", sources: ["OpenSky Network"] },
+  { icon: "💀", name: "Doomsday", description: "Natural hazards: earthquakes, climate events, volcanoes, floods, wildfires.", sources: ["NASA EONET", "USGS"] },
+  { icon: "⚔️", name: "Conflict", description: "Armed conflicts, geopolitics, protests and media monitoring.", sources: ["ACLED", "GDELT"] },
+  { icon: "☀️", name: "Solar System", description: "Solar flares, near-Earth objects (NEO) and space weather.", sources: ["NASA DONKI", "NASA NeoWs"] },
 ];
 
 const sharedTools = [
-  { name: "Geocoding", description: "Place name resolution to GPS coordinates" },
-  { name: "Weather", description: "Real-time weather conditions" },
+  { name: "Geocoding", desc: "Location → GPS coordinates via Nominatim" },
+  { name: "Weather", desc: "Real-time conditions via Open-Meteo" },
 ];
+
+const SOURCES = [
+  { name: "Mistral AI", desc: "LLM orchestrator & specialist agents" },
+  { name: "AIS Stream", desc: "Real-time vessel tracking — AIS data" },
+  { name: "OpenSky Network", desc: "Live flight tracking — ICAO transponders" },
+  { name: "NASA EONET", desc: "Natural event tracker — fires, storms, floods" },
+  { name: "USGS", desc: "Earthquake feed — magnitude, depth, location" },
+  { name: "ACLED", desc: "Armed conflict data — events & fatalities" },
+  { name: "GDELT", desc: "Global news intelligence — articles, sentiment" },
+  { name: "NASA DONKI", desc: "Space weather — solar flares, class & timing" },
+  { name: "NASA NeoWs", desc: "Near-Earth objects — distance, velocity, hazard" },
+  { name: "Nominatim", desc: "Geocoding — place name to coordinates" },
+  { name: "Open-Meteo", desc: "Open weather API — temp, wind, humidity" },
+];
+
+function Nav() {
+  return (
+    <nav style={{
+      position: "fixed", top: 0, left: 0, right: 0, zIndex: 80,
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "0 40px", height: 56,
+      background: "#111113",
+      borderBottom: "1px solid rgba(255,250,235,0.08)",
+      fontFamily: mono,
+    }}>
+      <Link href="/" style={{ fontSize: 12, fontWeight: 600, letterSpacing: 4, color: "#fa500f", textDecoration: "none" }}>
+        Omni<strong>CAT</strong>
+      </Link>
+      <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+        <Link href="/" style={{ fontSize: 11, letterSpacing: 2, color: "rgba(255,250,235,0.4)", textDecoration: "none", textTransform: "uppercase" }}>
+          Home
+        </Link>
+        <Link href="/about" style={{ fontSize: 11, letterSpacing: 2, color: "#fffaeb", textDecoration: "none", textTransform: "uppercase", borderBottom: "1px solid rgba(250,80,15,0.5)", paddingBottom: 2 }}>
+          About
+        </Link>
+        <Link href="/chat" style={{
+          display: "inline-flex", alignItems: "center", gap: 8,
+          padding: "7px 18px",
+          background: "#fa500f", color: "#111113",
+          fontSize: 11, fontWeight: 700, letterSpacing: 2,
+          textDecoration: "none", textTransform: "uppercase",
+        }}>
+          Launch →
+        </Link>
+      </div>
+    </nav>
+  );
+}
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Grid background */}
-      <div
-        className="absolute inset-0 opacity-5"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}
-      />
+    <div style={{ minHeight: "100vh", background: "#111113", color: "#fffaeb", fontFamily: sans }}>
+      <Nav />
 
-      <div className="relative z-10 max-w-3xl mx-auto px-6 py-16">
+      <main style={{ maxWidth: 900, margin: "0 auto", padding: "96px 32px 80px" }}>
+
         {/* Header */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm mb-12 transition-opacity hover:opacity-60"
-          style={{ color: "var(--muted)" }}
-        >
-          <ArrowLeft size={14} />
-          Back
-        </Link>
-
-        <h1
-          className="text-5xl font-bold tracking-tighter mb-2"
-          style={{ letterSpacing: "-0.04em" }}
-        >
-          Architecture
-        </h1>
-        <p
-          className="text-sm uppercase tracking-[0.3em] mb-16"
-          style={{ color: "var(--muted)" }}
-        >
-          How OmniCAT works
-        </p>
-
-        {/* Orchestrator */}
-        <section className="mb-16">
-          <h2 className="text-xs uppercase tracking-widest mb-6" style={{ color: "var(--muted)" }}>
-            Orchestrator
-          </h2>
-          <div
-            className="border p-6 rounded-none"
-            style={{ borderColor: "var(--border)", background: "var(--card)" }}
-          >
-            <p className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
-              The <span className="text-white font-medium">LLM router</span> analyzes each query
-              and decides which specialized agent(s) to mobilize. Selected agents are
-              launched <span className="text-white font-medium">in parallel</span>, then their
-              results are assembled into a structured briefing.
-            </p>
-
-            {/* Flow diagram */}
-            <div className="mt-8 flex flex-col items-center gap-3">
-              <div
-                className="border px-4 py-2 text-xs uppercase tracking-widest"
-                style={{ borderColor: "var(--border)" }}
-              >
-                User query
-              </div>
-              <div className="w-px h-6" style={{ background: "var(--border)" }} />
-              <div
-                className="border px-4 py-2 text-xs uppercase tracking-widest text-white"
-                style={{ borderColor: "rgba(255,255,255,0.3)" }}
-              >
-                Orchestrator — LLM Routing
-              </div>
-              <div className="flex items-start gap-8 mt-2">
-                {agents.map((a) => (
-                  <div key={a.name} className="flex flex-col items-center gap-2">
-                    <div className="w-px h-6" style={{ background: "var(--border)" }} />
-                    <span className="text-lg">{a.icon}</span>
-                    <span className="text-xs" style={{ color: "var(--muted)" }}>
-                      {a.name}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="w-px h-6 mt-2" style={{ background: "var(--border)" }} />
-              <div
-                className="border px-4 py-2 text-xs uppercase tracking-widest"
-                style={{ borderColor: "var(--border)" }}
-              >
-                Briefing OSINT
-              </div>
-            </div>
+        <div style={{ marginBottom: 64 }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            padding: "4px 12px", marginBottom: 24,
+            border: "1px solid rgba(250,80,15,0.3)",
+            background: "rgba(250,80,15,0.06)",
+            fontSize: 10, letterSpacing: 3,
+            color: "#fa500f", fontFamily: mono,
+            textTransform: "uppercase",
+          }}>
+            <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#fa500f", display: "inline-block", animation: "pulse 2s ease-in-out infinite" }} />
+            Architecture
           </div>
-        </section>
+          <h1 style={{ fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20 }}>
+            How it works
+          </h1>
+          <p style={{ fontSize: 16, color: "rgba(255,250,235,0.5)", lineHeight: 1.8, maxWidth: 640 }}>
+            OmniCAT combines a Mistral AI agentic loop with real-time data APIs.
+            When you enter a location, the orchestrator automatically selects and calls
+            the relevant agents in parallel, then synthesises the results into a structured intelligence brief.
+          </p>
+        </div>
+
+        {/* Flow summary */}
+        <div style={{
+          display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 1, marginBottom: 64,
+          border: "1px solid rgba(255,250,235,0.08)",
+          background: "rgba(255,250,235,0.08)",
+        }}>
+          {[
+            { step: "01", label: "Query", desc: "User types a location or area of interest" },
+            { step: "02", label: "Routing", desc: "LLM orchestrator selects the relevant specialist agents" },
+            { step: "03", label: "Tools", desc: "Agents call live APIs: AIS, OpenSky, NASA, ACLED, GDELT…" },
+            { step: "04", label: "Stream", desc: "Structured OSINT briefing streamed in real-time via SSE" },
+          ].map(({ step, label, desc }) => (
+            <div key={step} style={{ padding: "20px 24px", background: "#111113" }}>
+              <div style={{ fontSize: 9, letterSpacing: 3, color: "#fa500f", fontFamily: mono, marginBottom: 8 }}>{step}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>{label}</div>
+              <div style={{ fontSize: 12, color: "rgba(255,250,235,0.4)", lineHeight: 1.6 }}>{desc}</div>
+            </div>
+          ))}
+        </div>
 
         {/* Agents */}
-        <section className="mb-16">
-          <h2 className="text-xs uppercase tracking-widest mb-6" style={{ color: "var(--muted)" }}>
+        <div style={{ marginBottom: 64 }}>
+          <div style={{
+            fontSize: 8, letterSpacing: 4, color: "rgba(255,250,235,0.35)",
+            fontFamily: mono, textTransform: "uppercase", marginBottom: 20,
+            display: "flex", alignItems: "center", gap: 12,
+          }}>
             Specialized agents
-          </h2>
-          <div className="flex flex-col gap-4">
+            <div style={{ flex: 1, height: 1, background: "rgba(255,250,235,0.08)" }} />
+          </div>
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 1,
+            border: "1px solid rgba(255,250,235,0.08)",
+            background: "rgba(255,250,235,0.08)",
+          }}>
             {agents.map((agent) => (
-              <div
-                key={agent.name}
-                className="border p-6 rounded-none"
-                style={{ borderColor: "var(--border)", background: "var(--card)" }}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-2xl">{agent.icon}</span>
-                  <h3 className="text-lg font-semibold tracking-tight">{agent.name}</h3>
+              <div key={agent.name} style={{ padding: "20px 24px", background: "#111113" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <span style={{ fontSize: 20 }}>{agent.icon}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: 1 }}>{agent.name}</span>
                 </div>
-                <p className="text-sm mb-4 leading-relaxed" style={{ color: "var(--muted)" }}>
+                <p style={{ fontSize: 12, color: "rgba(255,250,235,0.4)", lineHeight: 1.6, marginBottom: 12 }}>
                   {agent.description}
                 </p>
-                <div className="flex gap-2 flex-wrap">
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {agent.sources.map((src) => (
-                    <span
-                      key={src}
-                      className="text-xs px-2 py-1 border"
-                      style={{ borderColor: "var(--border)", color: "var(--muted)" }}
-                    >
+                    <span key={src} style={{
+                      fontSize: 10, letterSpacing: 1, padding: "2px 8px",
+                      border: "1px solid rgba(250,80,15,0.2)",
+                      color: "#fa500f", fontFamily: mono,
+                      textTransform: "uppercase",
+                    }}>
                       {src}
                     </span>
                   ))}
@@ -167,51 +155,107 @@ export default function AboutPage() {
               </div>
             ))}
           </div>
-        </section>
+        </div>
 
         {/* Shared tools */}
-        <section className="mb-16">
-          <h2 className="text-xs uppercase tracking-widest mb-6" style={{ color: "var(--muted)" }}>
+        <div style={{ marginBottom: 64 }}>
+          <div style={{
+            fontSize: 8, letterSpacing: 4, color: "rgba(255,250,235,0.35)",
+            fontFamily: mono, textTransform: "uppercase", marginBottom: 20,
+            display: "flex", alignItems: "center", gap: 12,
+          }}>
             Shared tools
-          </h2>
-          <div className="flex flex-col gap-4">
+            <div style={{ flex: 1, height: 1, background: "rgba(255,250,235,0.08)" }} />
+          </div>
+          <div style={{
+            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1,
+            border: "1px solid rgba(255,250,235,0.08)",
+            background: "rgba(255,250,235,0.08)",
+          }}>
             {sharedTools.map((tool) => (
-              <div
-                key={tool.name}
-                className="border p-4 rounded-none flex items-center justify-between"
-                style={{ borderColor: "var(--border)", background: "var(--card)" }}
-              >
-                <span className="text-sm font-medium">{tool.name}</span>
-                <span className="text-xs" style={{ color: "var(--muted)" }}>
-                  {tool.description}
-                </span>
+              <div key={tool.name} style={{ padding: "16px 24px", background: "#111113" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: "#fa500f", fontFamily: mono, marginBottom: 4 }}>
+                  {tool.name}
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,250,235,0.4)" }}>{tool.desc}</div>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+
+        {/* Data sources */}
+        <div style={{ marginBottom: 64 }}>
+          <div style={{
+            fontSize: 8, letterSpacing: 4, color: "rgba(255,250,235,0.35)",
+            fontFamily: mono, textTransform: "uppercase", marginBottom: 20,
+            display: "flex", alignItems: "center", gap: 12,
+          }}>
+            Data sources
+            <div style={{ flex: 1, height: 1, background: "rgba(255,250,235,0.08)" }} />
+          </div>
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 1,
+            border: "1px solid rgba(255,250,235,0.08)",
+            background: "rgba(255,250,235,0.08)",
+          }}>
+            {SOURCES.map(({ name, desc }) => (
+              <div key={name} style={{ padding: "16px 20px", background: "#111113", transition: "background 0.15s" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: "#fa500f", fontFamily: mono, marginBottom: 6 }}>
+                  {name}
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,250,235,0.4)", lineHeight: 1.6 }}>{desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Tech stack */}
-        <section>
-          <h2 className="text-xs uppercase tracking-widest mb-6" style={{ color: "var(--muted)" }}>
+        <div style={{ marginBottom: 64 }}>
+          <div style={{
+            fontSize: 8, letterSpacing: 4, color: "rgba(255,250,235,0.35)",
+            fontFamily: mono, textTransform: "uppercase", marginBottom: 20,
+            display: "flex", alignItems: "center", gap: 12,
+          }}>
             Tech stack
-          </h2>
-          <div
-            className="border p-6 rounded-none text-sm leading-relaxed"
-            style={{ borderColor: "var(--border)", background: "var(--card)", color: "var(--muted)" }}
-          >
-            <div className="grid grid-cols-2 gap-y-3 gap-x-8">
-              <span className="text-white">LLM</span>
-              <span>Mistral via AWS Bedrock</span>
-              <span className="text-white">Agent framework</span>
-              <span>Strands Agents</span>
-              <span className="text-white">Backend</span>
-              <span>FastAPI + SSE streaming</span>
-              <span className="text-white">Frontend</span>
-              <span>Next.js 15 + Tailwind</span>
-            </div>
+            <div style={{ flex: 1, height: 1, background: "rgba(255,250,235,0.08)" }} />
           </div>
-        </section>
-      </div>
+          <div style={{
+            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1,
+            border: "1px solid rgba(255,250,235,0.08)",
+            background: "rgba(255,250,235,0.08)",
+          }}>
+            {[
+              { label: "LLM", value: "Mistral via AWS Bedrock" },
+              { label: "Agent framework", value: "Strands Agents" },
+              { label: "Backend", value: "FastAPI + SSE streaming" },
+              { label: "Frontend", value: "Next.js 15 + Tailwind 4" },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ padding: "16px 24px", background: "#111113" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: "#fffaeb", fontFamily: mono, marginBottom: 4 }}>
+                  {label}
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,250,235,0.4)" }}>{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer CTA */}
+        <div style={{ textAlign: "center" }}>
+          <Link href="/chat" style={{
+            display: "inline-flex", alignItems: "center", gap: 10,
+            padding: "14px 32px",
+            background: "#fa500f", color: "#111113",
+            fontWeight: 700, fontSize: 14, letterSpacing: "0.02em",
+            textDecoration: "none", fontFamily: sans,
+            transition: "opacity 0.15s",
+          }}>
+            Launch briefing
+            <span style={{ fontFamily: mono, fontSize: 16 }}>→</span>
+          </Link>
+        </div>
+
+      </main>
     </div>
   );
 }

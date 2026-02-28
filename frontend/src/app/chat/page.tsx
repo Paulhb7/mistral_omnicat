@@ -2,26 +2,39 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useChat, ChatMessage } from "@/hooks/use-chat";
-import { ArrowUp, RotateCcw, ArrowLeft } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+
+const mono = "'Roboto Mono', monospace";
+const sans = "'Plus Jakarta Sans', system-ui, sans-serif";
 
 function ToolChip({ name, status }: { name: string; status: string }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono rounded-full border"
       style={{
-        borderColor: status === "running" ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.1)",
-        background: status === "running" ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
+        display: "inline-flex", alignItems: "center", gap: 6,
+        padding: "4px 12px",
+        fontSize: 11, letterSpacing: 1,
+        fontFamily: mono,
+        color: status === "running" ? "#fa500f" : "rgba(255,250,235,0.35)",
+        border: `1px solid ${status === "running" ? "rgba(250,80,15,0.3)" : "rgba(255,250,235,0.08)"}`,
+        background: status === "running" ? "rgba(250,80,15,0.06)" : "rgba(255,250,235,0.02)",
+        textTransform: "uppercase",
       }}
     >
       {status === "running" && (
         <span
-          className="w-1.5 h-1.5 rounded-full bg-white"
-          style={{ animation: "pulse 1.5s infinite" }}
+          style={{
+            width: 5, height: 5, borderRadius: "50%",
+            background: "#fa500f", display: "inline-block",
+            animation: "pulse 1.5s ease-in-out infinite",
+          }}
         />
       )}
-      {status === "done" && <span className="w-1.5 h-1.5 rounded-full bg-white/40" />}
+      {status === "done" && (
+        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(255,250,235,0.2)", display: "inline-block" }} />
+      )}
       {name}
     </span>
   );
@@ -31,41 +44,54 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start" }}>
       <div
-        className="max-w-[75%] px-4 py-3 text-sm leading-relaxed"
         style={{
-          background: isUser ? "rgba(255,255,255,0.1)" : "transparent",
-          borderRadius: isUser ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-          border: isUser ? "none" : "1px solid rgba(255,255,255,0.08)",
+          maxWidth: "75%",
+          padding: "14px 18px",
+          fontSize: 14,
+          lineHeight: 1.7,
+          fontFamily: isUser ? sans : sans,
+          background: isUser ? "rgba(250,80,15,0.08)" : "rgba(255,250,235,0.03)",
+          border: isUser ? "1px solid rgba(250,80,15,0.2)" : "1px solid rgba(255,250,235,0.06)",
+          borderRadius: isUser ? "2px 2px 2px 2px" : "2px",
+          color: isUser ? "#fffaeb" : "rgba(255,250,235,0.75)",
         }}
       >
         {isUser ? (
-          <p>{message.content}</p>
+          <p style={{ margin: 0 }}>{message.content}</p>
         ) : (
-          <div className="prose prose-invert prose-sm max-w-none">
+          <div>
             <ReactMarkdown
               components={{
-                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                p: ({ children }) => <p style={{ margin: "0 0 8px 0" }}>{children}</p>,
                 h1: ({ children }) => (
-                  <h1 className="text-base font-bold mt-4 mb-2 first:mt-0">{children}</h1>
+                  <h1 style={{ fontSize: 16, fontWeight: 700, marginTop: 16, marginBottom: 8, color: "#fffaeb" }}>{children}</h1>
                 ),
                 h2: ({ children }) => (
-                  <h2 className="text-sm font-bold mt-3 mb-1.5 uppercase tracking-wider text-white/70">
+                  <h2 style={{
+                    fontSize: 11, fontWeight: 600, marginTop: 20, marginBottom: 8,
+                    textTransform: "uppercase", letterSpacing: 2,
+                    color: "#fa500f", fontFamily: mono,
+                  }}>
                     {children}
                   </h2>
                 ),
                 h3: ({ children }) => (
-                  <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>
+                  <h3 style={{ fontSize: 14, fontWeight: 600, marginTop: 12, marginBottom: 6, color: "#fffaeb" }}>{children}</h3>
                 ),
-                ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
-                ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
-                li: ({ children }) => <li className="mb-0.5">{children}</li>,
+                ul: ({ children }) => <ul style={{ paddingLeft: 16, marginBottom: 8 }}>{children}</ul>,
+                ol: ({ children }) => <ol style={{ paddingLeft: 16, marginBottom: 8 }}>{children}</ol>,
+                li: ({ children }) => <li style={{ marginBottom: 3 }}>{children}</li>,
                 strong: ({ children }) => (
-                  <strong className="font-semibold text-white">{children}</strong>
+                  <strong style={{ fontWeight: 600, color: "#fffaeb" }}>{children}</strong>
                 ),
                 code: ({ children }) => (
-                  <code className="px-1 py-0.5 rounded text-xs font-mono bg-white/10">
+                  <code style={{
+                    padding: "2px 6px", fontSize: 12,
+                    fontFamily: mono, background: "rgba(250,80,15,0.08)",
+                    border: "1px solid rgba(250,80,15,0.15)",
+                  }}>
                     {children}
                   </code>
                 ),
@@ -75,8 +101,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             </ReactMarkdown>
             {!message.content && (
               <span
-                className="inline-block w-2 h-4 bg-white/60"
-                style={{ animation: "blink 1s infinite" }}
+                style={{
+                  display: "inline-block", width: 8, height: 16,
+                  background: "#fa500f", opacity: 0.6,
+                  animation: "blink 1s infinite",
+                }}
               />
             )}
           </div>
@@ -108,26 +137,33 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col">
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "#111113", color: "#fffaeb" }}>
       {/* Header */}
       <header
-        className="flex items-center justify-between px-6 py-3 border-b"
-        style={{ borderColor: "var(--border)" }}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "0 24px", height: 56,
+          borderBottom: "1px solid rgba(255,250,235,0.08)",
+          fontFamily: mono,
+        }}
       >
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            className="text-white/40 hover:text-white transition-colors"
-          >
-            <ArrowLeft size={18} />
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <Link href="/" style={{ color: "rgba(255,250,235,0.35)", textDecoration: "none", transition: "color 0.15s", display: "flex" }}>
+            <ArrowLeft size={16} />
           </Link>
-          <h1 className="text-sm font-bold tracking-tight">
-            Omni<span className="font-light">CAT</span>
-          </h1>
+          <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 4, color: "#fa500f" }}>
+            Omni<strong>CAT</strong>
+          </span>
           {agentMode && (
             <span
-              className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full border"
-              style={{ borderColor: "var(--border)" }}
+              style={{
+                fontSize: 10, letterSpacing: 2,
+                padding: "3px 10px",
+                border: "1px solid rgba(250,80,15,0.3)",
+                background: "rgba(250,80,15,0.06)",
+                color: "#fa500f",
+                textTransform: "uppercase",
+              }}
             >
               {agentMode}
             </span>
@@ -136,30 +172,53 @@ export default function ChatPage() {
 
         <button
           onClick={reset}
-          className="text-white/30 hover:text-white transition-colors"
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            color: "rgba(255,250,235,0.25)", transition: "color 0.15s",
+            display: "flex", alignItems: "center",
+          }}
           title="New briefing"
         >
-          <RotateCcw size={16} />
+          <RotateCcw size={14} />
         </button>
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px" }}>
         {messages.length === 0 && !isLoading && (
-          <div className="h-full flex flex-col items-center justify-center text-center">
-            <p className="text-3xl font-bold tracking-tighter mb-2">
-              Omni<span className="font-light">CAT</span>
+          <div style={{
+            height: "100%", display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center", textAlign: "center",
+          }}>
+            <h2 style={{
+              fontSize: "clamp(32px, 5vw, 48px)", fontWeight: 700,
+              letterSpacing: "-0.03em", marginBottom: 8,
+              fontFamily: sans,
+            }}>
+              Omni<span style={{ color: "#fa500f" }}>CAT</span>
+            </h2>
+            <p style={{
+              fontSize: 13, color: "rgba(255,250,235,0.35)",
+              fontFamily: mono, letterSpacing: 1, marginBottom: 32,
+            }}>
+              Give me a location, I&apos;ll run the briefing.
             </p>
-            <p className="text-sm text-white/40 mb-8">
-              Give me a location, I'll run the briefing.
-            </p>
-            <div className="flex gap-2 flex-wrap justify-center">
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
               {["Analyze Marseille", "Strait of Gibraltar area", "Situation in Odessa"].map(
                 (q) => (
                   <button
                     key={q}
                     onClick={() => send(q)}
-                    className="text-xs px-4 py-2 border border-white/10 rounded-full hover:bg-white/5 transition-colors"
+                    style={{
+                      fontSize: 11, padding: "8px 16px", letterSpacing: 1,
+                      background: "transparent",
+                      border: "1px solid rgba(255,250,235,0.1)",
+                      color: "rgba(255,250,235,0.4)",
+                      cursor: "pointer", fontFamily: mono,
+                      textTransform: "uppercase",
+                      transition: "all 0.15s",
+                    }}
+                    className="hover:border-[rgba(250,80,15,0.3)] hover:text-[#fa500f] hover:bg-[rgba(250,80,15,0.04)]"
                   >
                     {q}
                   </button>
@@ -169,14 +228,14 @@ export default function ChatPage() {
           </div>
         )}
 
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
           {messages.map((msg, i) => (
             <MessageBubble key={i} message={msg} />
           ))}
 
           {/* Tool chips */}
           {tools.length > 0 && (
-            <div className="flex gap-2 flex-wrap pl-1">
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", paddingLeft: 4 }}>
               {tools.map((t, i) => (
                 <ToolChip key={i} name={t.name} status={t.status} />
               ))}
@@ -185,7 +244,12 @@ export default function ChatPage() {
 
           {/* Error */}
           {error && (
-            <div className="text-xs text-red-400 font-mono pl-1">
+            <div style={{
+              fontSize: 12, fontFamily: mono, color: "#ff4444",
+              padding: "8px 12px",
+              border: "1px solid rgba(255,68,68,0.2)",
+              background: "rgba(255,68,68,0.05)",
+            }}>
               {error}
             </div>
           )}
@@ -195,10 +259,10 @@ export default function ChatPage() {
       </div>
 
       {/* Input */}
-      <div className="px-6 py-4" style={{ borderTop: "1px solid var(--border)" }}>
+      <div style={{ padding: "16px 24px", borderTop: "1px solid rgba(255,250,235,0.08)" }}>
         <form
           onSubmit={handleSubmit}
-          className="max-w-3xl mx-auto flex items-center gap-3"
+          style={{ maxWidth: 720, margin: "0 auto", display: "flex", alignItems: "center", gap: 12 }}
         >
           <input
             ref={inputRef}
@@ -207,14 +271,31 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Analyze the area of..."
             disabled={isLoading}
-            className="flex-1 bg-transparent border border-white/10 rounded-full px-5 py-3 text-sm outline-none focus:border-white/30 transition-colors placeholder:text-white/20 disabled:opacity-40"
+            style={{
+              flex: 1, background: "transparent",
+              border: "1px solid rgba(255,250,235,0.1)",
+              padding: "12px 18px", fontSize: 14,
+              color: "#fffaeb", outline: "none",
+              fontFamily: sans,
+              transition: "border-color 0.15s",
+              opacity: isLoading ? 0.4 : 1,
+            }}
           />
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center hover:bg-white hover:text-black transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white"
+            style={{
+              width: 44, height: 44,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: input.trim() && !isLoading ? "#fa500f" : "transparent",
+              border: input.trim() && !isLoading ? "none" : "1px solid rgba(255,250,235,0.1)",
+              color: input.trim() && !isLoading ? "#111113" : "rgba(255,250,235,0.2)",
+              cursor: isLoading || !input.trim() ? "default" : "pointer",
+              transition: "all 0.15s",
+              fontFamily: mono, fontSize: 18, fontWeight: 700,
+            }}
           >
-            <ArrowUp size={16} />
+            →
           </button>
         </form>
       </div>
