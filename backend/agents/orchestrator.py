@@ -69,12 +69,36 @@ def _get_orchestrator_agent(session_id: str) -> Agent:
 
 async def stream_orchestrator(user_query: str, session_id: str):
     """
-    Main entry point — async generator that yields text chunks as they arrive.
+    Main entry point — async generator that yields event dicts as they arrive.
+
+    Yielded dicts have a "type" key:
+      - {"type": "content", "data": "..."}   — text chunk
+      - {"type": "tool_start", "tool": "..."} — specialist started
+      - {"type": "tool_end", "tool": "..."}   — specialist finished
     """
     orchestrator = _get_orchestrator_agent(session_id)
+    active_tool = None
+
     async for event in orchestrator.stream_async(user_query):
+        # Detect tool start
+        if "current_tool_use" in event and event["current_tool_use"].get("name"):
+            tool_name = event["current_tool_use"]["name"]
+            if tool_name != active_tool:
+                if active_tool is not None:
+                    yield {"type": "tool_end", "tool": active_tool}
+                active_tool = tool_name
+                yield {"type": "tool_start", "tool": active_tool}
+
+        # Text chunk
         if "data" in event:
-            yield event["data"]
+            if active_tool is not None:
+                yield {"type": "tool_end", "tool": active_tool}
+                active_tool = None
+            yield {"type": "content", "data": event["data"]}
+
+    # Close any remaining tool
+    if active_tool is not None:
+        yield {"type": "tool_end", "tool": active_tool}
 
 
 def _format_briefing(query: str, results: dict[str, str]) -> str:

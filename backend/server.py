@@ -62,8 +62,8 @@ async def stream_endpoint(request: ChatRequest):
 
     async def generate():
         try:
-            async for chunk in stream_orchestrator(request.message, request.session_id):
-                yield _sse({"type": "content", "data": chunk})
+            async for event in stream_orchestrator(request.message, request.session_id):
+                yield _sse(event)
             yield "data: [DONE]\n\n"
 
         except Exception as e:
