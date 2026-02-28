@@ -42,9 +42,9 @@ const CYBERPUNK: ThemePalette = {
   fgMuted: 'rgba(224, 240, 255, 0.2)',
   accent: '#00f0ff',
   accentDim: 'rgba(0, 240, 255, 0.12)',
-  accentBorder: 'rgba(255, 0, 170, 0.35)',
+  accentBorder: 'rgba(255, 0, 170, 0.55)',
   card: 'rgba(0, 240, 255, 0.04)',
-  border: 'rgba(255, 0, 170, 0.18)',
+  border: 'rgba(255, 0, 170, 0.35)',
   glow: 'rgba(0, 240, 255, 0.10)',
   accent2: '#ff00aa',
 };
