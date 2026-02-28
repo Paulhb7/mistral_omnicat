@@ -145,24 +145,24 @@ export default function Home() {
         <p
           style={{
             position: "relative", zIndex: 1,
-            fontSize: "clamp(13px, 1.5vw, 15px)",
-            color: "rgba(255,250,235,0.35)",
-            maxWidth: 400,
+            fontSize: "clamp(16px, 2vw, 20px)",
+            color: "rgba(255,250,235,0.5)",
+            maxWidth: 500,
             lineHeight: 1.6,
-            marginBottom: 10,
+            marginBottom: 14,
             fontFamily: "'Roboto Mono', monospace",
             letterSpacing: "0.02em",
             fontStyle: "italic",
           }}
         >
-          Multi-Agent OSINT Intelligence Platform.
+          The secret son of Jarvis, Palantir and Mistral.
         </p>
 
         <p
           style={{
             position: "relative", zIndex: 1,
-            fontSize: "clamp(15px, 2vw, 18px)",
-            color: "rgba(255,250,235,0.5)",
+            fontSize: "clamp(13px, 1.4vw, 15px)",
+            color: "rgba(255,250,235,0.35)",
             maxWidth: 500,
             lineHeight: 1.7,
             marginBottom: 52,
