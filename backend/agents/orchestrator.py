@@ -42,7 +42,7 @@ SESSIONS_DIR = Path(__file__).resolve().parent.parent / "sessions"
 def _get_orchestrator_agent(session_id: str) -> Agent:
     """Create the orchestrator agent with all specialist tools and session persistence."""
     model = BedrockModel(
-        model_id=os.getenv("ORCHESTRATOR_MODEL_ID", "mistral.mistral-small-2402-v1:0"),
+        model_id=os.getenv("ORCHESTRATOR_MODEL_ID", "mistral.mistral-large-3-675b-instruct"),
         region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
         streaming=False,
     )
