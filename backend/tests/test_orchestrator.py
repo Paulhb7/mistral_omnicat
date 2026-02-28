@@ -1,67 +1,10 @@
-"""Unit tests for the orchestrator — routing logic and briefing formatting."""
+"""Unit tests for the orchestrator — Agent-as-Tools pattern."""
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
-from agents.orchestrator import _parse_routing, _format_briefing
+from agents.orchestrator import _format_briefing
 
 
-# -- _parse_routing ------------------------------------------------------------
-
-def test_parse_routing_single_agent():
-    assert _parse_routing("maritime") == ["maritime"]
-
-
-def test_parse_routing_multiple_agents():
-    result = _parse_routing("maritime aviation doomsday")
-    assert "maritime" in result
-    assert "aviation" in result
-    assert "doomsday" in result
-
-
-def test_parse_routing_all_agents():
-    result = _parse_routing("maritime aviation doomsday conflict solar_system")
-    assert len(result) == 5
-
-
-def test_parse_routing_case_insensitive():
-    result = _parse_routing("MARITIME Aviation Doomsday")
-    assert "maritime" in result
-    assert "aviation" in result
-    assert "doomsday" in result
-
-
-def test_parse_routing_with_noise():
-    result = _parse_routing("I think maritime and aviation would be best here.")
-    assert "maritime" in result
-    assert "aviation" in result
-    assert len(result) == 2
-
-
-def test_parse_routing_fallback_on_empty():
-    result = _parse_routing("")
-    assert len(result) == 5  # All agents
-
-
-def test_parse_routing_fallback_on_garbage():
-    result = _parse_routing("hello world bonjour")
-    assert len(result) == 5  # All agents
-
-
-def test_parse_routing_deduplication():
-    result = _parse_routing("maritime maritime maritime")
-    assert result == ["maritime"]
-
-
-def test_parse_routing_conflict_agent():
-    result = _parse_routing("conflict")
-    assert result == ["conflict"]
-
-
-def test_parse_routing_solar_system():
-    result = _parse_routing("solar_system")
-    assert result == ["solar_system"]
-
-
-# -- _format_briefing ----------------------------------------------------------
+# -- _format_briefing (legacy, still used) -------------------------------------
 
 def test_format_briefing_single_agent():
     result = _format_briefing("test query", {"maritime": "Ship detected"})
@@ -110,28 +53,87 @@ def test_format_briefing_unknown_agent_label():
     assert "UNKNOWN_AGENT" in result
 
 
+# -- _get_orchestrator_agent ---------------------------------------------------
+
+@patch("agents.orchestrator.BedrockModel")
+@patch("agents.orchestrator.Agent")
+def test_get_orchestrator_agent_has_all_tools(mock_agent_cls, mock_model_cls):
+    from agents.orchestrator import _get_orchestrator_agent
+
+    mock_agent_cls.return_value = MagicMock()
+
+    agent = _get_orchestrator_agent()
+
+    mock_model_cls.assert_called_once()
+    mock_agent_cls.assert_called_once()
+    call_kwargs = mock_agent_cls.call_args[1]
+    # 5 specialist agent-tools + geocode_location + get_weather = 7
+    assert len(call_kwargs["tools"]) == 7
+    assert "orchestrator" in call_kwargs["system_prompt"].lower() or "osint" in call_kwargs["system_prompt"].lower()
+
+
 # -- run_orchestrator (integration) --------------------------------------------
 
 @pytest.mark.asyncio
-async def test_run_orchestrator_routes_and_runs():
+async def test_run_orchestrator_calls_orchestrator_agent():
     from agents.orchestrator import run_orchestrator
 
-    mock_routing_agent = MagicMock()
-    mock_routing_agent.return_value = "maritime"
+    mock_orchestrator = MagicMock()
+    mock_orchestrator.return_value = "Cross-enriched briefing with maritime and conflict data"
 
-    mock_specialist = MagicMock()
-    mock_specialist.return_value = MagicMock()
+    with patch("agents.orchestrator._get_orchestrator_agent", return_value=mock_orchestrator), \
+         patch("agents.orchestrator.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
 
-    with patch("agents.orchestrator._get_router_agent", return_value=mock_routing_agent), \
-         patch("agents.orchestrator.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread, \
-         patch("agents.orchestrator._SPECIALISTS", {"maritime": lambda: mock_specialist}):
+        mock_to_thread.return_value = "Cross-enriched briefing with maritime and conflict data"
 
-        mock_to_thread.side_effect = [
-            "maritime",  # Router response
-            "3 vessels detected in the area",  # Maritime agent response
-        ]
+        result = await run_orchestrator("Analyze the Marseille area")
 
-        result = await run_orchestrator("Show me ships near Marseille")
+        mock_to_thread.assert_called_once_with(mock_orchestrator, "Analyze the Marseille area")
+        assert "Cross-enriched" in result
 
-        assert "BRIEFING OSINT" in result
-        assert "MARITIME" in result
+
+@pytest.mark.asyncio
+async def test_run_orchestrator_handles_errors():
+    from agents.orchestrator import run_orchestrator
+
+    mock_orchestrator = MagicMock()
+
+    with patch("agents.orchestrator._get_orchestrator_agent", return_value=mock_orchestrator), \
+         patch("agents.orchestrator.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
+
+        mock_to_thread.side_effect = Exception("Model error")
+
+        result = await run_orchestrator("test query")
+
+        assert "[Error]" in result
+
+
+# -- _run_agent ----------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_run_agent_success():
+    from agents.orchestrator import _run_agent
+
+    mock_agent = MagicMock()
+
+    with patch("agents.orchestrator.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
+        mock_to_thread.return_value = "Agent result"
+
+        result = await _run_agent(mock_agent, "test query")
+
+        assert result == "Agent result"
+
+
+@pytest.mark.asyncio
+async def test_run_agent_error():
+    from agents.orchestrator import _run_agent
+
+    mock_agent = MagicMock()
+
+    with patch("agents.orchestrator.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
+        mock_to_thread.side_effect = Exception("Connection failed")
+
+        result = await _run_agent(mock_agent, "test query")
+
+        assert "[Error]" in result
+        assert "Connection failed" in result

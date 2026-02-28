@@ -11,13 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from agents.orchestrator import (
-    run_orchestrator,
-    create_maritime_agent,
-    create_aviation_agent,
-    create_doomsday_agent,
-    _run_agent,
-)
+from agents.orchestrator import run_orchestrator
 from tools.geo_tools import _geocode_location, _get_weather
 
 load_dotenv()
@@ -28,7 +22,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="OmniCAT API",
     description="Multi-agent OSINT intelligence platform",
-    version="1.0.0",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -56,11 +50,13 @@ async def health():
 @app.post("/stream")
 async def stream_endpoint(request: ChatRequest):
     """
-    SSE streaming endpoint.
+    SSE streaming endpoint with cross-enriched intelligence briefings.
+
+    The orchestrator agent decides which specialists to call,
+    chains calls as needed, and produces a cross-enriched briefing.
 
     Events:
     - tool_start / tool_end : tool lifecycle
-    - agent_selected       : which agent is running
     - location             : geocoded coordinates
     - content              : briefing text (accumulated)
     - error                : error
@@ -69,102 +65,61 @@ async def stream_endpoint(request: ChatRequest):
 
     async def generate():
         try:
-            # Step 1: Geocode
+            # Step 1: Geocode for map display
             yield _sse({"type": "tool_start", "tool": "geocode_location"})
             geo = await _geocode_location(location=request.message)
             yield _sse({"type": "tool_end", "tool": "geocode_location"})
 
-            if "error" in geo:
-                yield _sse({"type": "content", "data": f"Location not found. Direct dispatch...\n\n"})
-                maritime_agent = create_maritime_agent()
-                aviation_agent = create_aviation_agent()
-                doomsday_agent = create_doomsday_agent()
+            enriched_query = request.message
 
-                for agent_name in ["maritime", "aviation", "doomsday"]:
-                    yield _sse({"type": "agent_selected", "agent": agent_name})
+            if "error" not in geo:
+                lat, lng = geo["lat"], geo["lng"]
+                location_name = geo["location"]
+                country = geo.get("country", "")
 
-                maritime_result, aviation_result, doomsday_result = await asyncio.gather(
-                    _run_agent(maritime_agent, request.message),
-                    _run_agent(aviation_agent, request.message),
-                    _run_agent(doomsday_agent, request.message),
+                yield _sse({
+                    "type": "location",
+                    "name": location_name,
+                    "lat": lat,
+                    "lng": lng,
+                })
+
+                # Step 2: Weather for briefing header
+                yield _sse({"type": "tool_start", "tool": "get_weather"})
+                weather_result = await _get_weather(lat=lat, lng=lng)
+                yield _sse({"type": "tool_end", "tool": "get_weather"})
+
+                # Build briefing header
+                briefing_header = f"# Briefing OSINT — {location_name}, {country}\n\n"
+                briefing_header += f"**Coordinates**: {lat:.4f}, {lng:.4f}\n\n"
+
+                if weather_result:
+                    briefing_header += (
+                        f"**Weather**: {weather_result.get('condition', '?')} | "
+                        f"{weather_result.get('temperature_c', '?')}°C | "
+                        f"Wind {weather_result.get('wind_kmh', '?')} km/h | "
+                        f"Humidity {weather_result.get('humidity_pct', '?')}%\n\n"
+                    )
+
+                yield _sse({"type": "content", "data": briefing_header})
+
+                # Enrich query with location context for the orchestrator
+                bbox_offset = 0.2
+                enriched_query = (
+                    f"Analyze the area around {location_name}, {country} "
+                    f"(lat={lat}, lng={lng}, "
+                    f"bbox [{lat - bbox_offset}, {lng - bbox_offset}] to "
+                    f"[{lat + bbox_offset}, {lng + bbox_offset}])."
                 )
+            else:
+                yield _sse({"type": "content", "data": "Location not found. Running direct analysis...\n\n"})
 
-                yield _sse({"type": "content", "data": f"## Maritime\n\n{maritime_result}\n\n"})
-                yield _sse({"type": "content", "data": f"## Aviation\n\n{aviation_result}\n\n"})
-                yield _sse({"type": "content", "data": f"## Doomsday\n\n{doomsday_result}\n\n"})
-                yield "data: [DONE]\n\n"
-                return
+            # Step 3: Run the orchestrator (agent-as-tools, cross-enriched)
+            yield _sse({"type": "tool_start", "tool": "orchestrator"})
+            result = await run_orchestrator(enriched_query)
+            yield _sse({"type": "tool_end", "tool": "orchestrator"})
 
-            lat, lng = geo["lat"], geo["lng"]
-            location_name = geo["location"]
-            country = geo.get("country", "")
-
-            yield _sse({
-                "type": "location",
-                "name": location_name,
-                "lat": lat,
-                "lng": lng,
-            })
-
-            # Step 2: Weather + agents in parallel
-            yield _sse({"type": "tool_start", "tool": "get_weather"})
-
-            bbox_offset = 0.2
-            maritime_query = (
-                f"Monitor the area around {location_name} "
-                f"(bbox [{lat - bbox_offset}, {lng - bbox_offset}] to "
-                f"[{lat + bbox_offset}, {lng + bbox_offset}]). "
-                f"List vessels present."
-            )
-            aviation_query = (
-                f"Search for aircraft in the {location_name} area "
-                f"(lat_min={lat - bbox_offset}, lat_max={lat + bbox_offset}, "
-                f"lon_min={lng - bbox_offset}, lon_max={lng + bbox_offset})."
-            )
-            doomsday_query = (
-                f"Analyze natural and security risks around "
-                f"{location_name} (lat={lat}, lng={lng}, country={country})."
-            )
-
-            maritime_agent = create_maritime_agent()
-            aviation_agent = create_aviation_agent()
-            doomsday_agent = create_doomsday_agent()
-
-            for agent_name in ["maritime", "aviation", "doomsday"]:
-                yield _sse({"type": "agent_selected", "agent": agent_name})
-                yield _sse({"type": "tool_start", "tool": f"agent_{agent_name}"})
-
-            weather_result, maritime_result, aviation_result, doomsday_result = (
-                await asyncio.gather(
-                    _get_weather(lat=lat, lng=lng),
-                    _run_agent(maritime_agent, maritime_query),
-                    _run_agent(aviation_agent, aviation_query),
-                    _run_agent(doomsday_agent, doomsday_query),
-                )
-            )
-
-            yield _sse({"type": "tool_end", "tool": "get_weather"})
-            for agent_name in ["maritime", "aviation", "doomsday"]:
-                yield _sse({"type": "tool_end", "tool": f"agent_{agent_name}"})
-
-            # Step 3: Build and stream the briefing
-            briefing = f"# Briefing OSINT — {location_name}, {country}\n\n"
-            briefing += f"**Coordinates**: {lat:.4f}, {lng:.4f}\n\n"
-
-            if weather_result:
-                briefing += (
-                    f"**Weather**: {weather_result.get('condition', '?')} | "
-                    f"{weather_result.get('temperature_c', '?')}°C | "
-                    f"Wind {weather_result.get('wind_kmh', '?')} km/h | "
-                    f"Humidity {weather_result.get('humidity_pct', '?')}%\n\n"
-                )
-
-            yield _sse({"type": "content", "data": briefing})
-
-            yield _sse({"type": "content", "data": f"---\n\n## Maritime\n\n{maritime_result}\n\n"})
-            yield _sse({"type": "content", "data": f"---\n\n## Aviation\n\n{aviation_result}\n\n"})
-            yield _sse({"type": "content", "data": f"---\n\n## Doomsday — Risks & Threats\n\n{doomsday_result}\n\n"})
-
+            yield _sse({"type": "content", "data": result})
             yield "data: [DONE]\n\n"
 
         except Exception as e:
