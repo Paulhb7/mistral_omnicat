@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import OrangeGlobe from "@/components/orange-globe";
 
@@ -34,8 +36,8 @@ export default function Home() {
 
       {/* Orange wireframe globe — decorative, right side */}
       <div aria-hidden style={{
-        position: "fixed", zIndex: 0, pointerEvents: "none",
-        right: "-7vw", top: "50%", transform: "translateY(-50%)",
+        position: "fixed", zIndex: 1, pointerEvents: "none",
+        right: "-5vw", top: "50%", transform: "translateY(-50%)",
       }}>
         <OrangeGlobe size={680} opacity={0.22} />
       </div>
