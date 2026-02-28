@@ -137,7 +137,7 @@ export default function ChatPage() {
         <button
           onClick={reset}
           className="text-white/30 hover:text-white transition-colors"
-          title="Nouveau briefing"
+          title="New briefing"
         >
           <RotateCcw size={16} />
         </button>
@@ -151,10 +151,10 @@ export default function ChatPage() {
               Omni<span className="font-light">CAT</span>
             </p>
             <p className="text-sm text-white/40 mb-8">
-              Donne-moi une zone, je lance le briefing.
+              Give me a location, I'll run the briefing.
             </p>
             <div className="flex gap-2 flex-wrap justify-center">
-              {["Analyse Marseille", "Zone du détroit de Gibraltar", "Situation à Odessa"].map(
+              {["Analyze Marseille", "Strait of Gibraltar area", "Situation in Odessa"].map(
                 (q) => (
                   <button
                     key={q}
@@ -205,7 +205,7 @@ export default function ChatPage() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Analyse la zone de..."
+            placeholder="Analyze the area of..."
             disabled={isLoading}
             className="flex-1 bg-transparent border border-white/10 rounded-full px-5 py-3 text-sm outline-none focus:border-white/30 transition-colors placeholder:text-white/20 disabled:opacity-40"
           />

@@ -60,11 +60,11 @@ export function useChat(
         });
 
         if (!res.ok) {
-          throw new Error(`Erreur serveur: ${res.status}`);
+          throw new Error(`Server error: ${res.status}`);
         }
 
         const reader = res.body?.getReader();
-        if (!reader) throw new Error("Pas de stream disponible");
+        if (!reader) throw new Error("No stream available");
 
         const decoder = new TextDecoder();
         let buffer = "";

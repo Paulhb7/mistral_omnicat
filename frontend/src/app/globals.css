@@ -49,3 +49,27 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+
+@keyframes radar-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes radar-ping {
+  0% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 0; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+.radar-sweep {
+  animation: radar-spin 4s linear infinite;
+  transform-origin: center;
+}
+
+.radar-ping {
+  animation: radar-ping 4s ease-out infinite;
+}
+
+.radar-ping-delayed {
+  animation: radar-ping 4s ease-out 2s infinite;
+}

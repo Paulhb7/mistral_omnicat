@@ -6,42 +6,42 @@ const agents = [
     icon: "🚢",
     name: "Maritime",
     description:
-      "Suivi de navires en temps réel, trafic portuaire et données AIS/MMSI.",
+      "Real-time vessel tracking, port traffic and AIS/MMSI data.",
     sources: ["AIS Stream"],
   },
   {
     icon: "✈️",
     name: "Aviation",
     description:
-      "Suivi de vols, trafic aérien et identification d'aéronefs via ICAO.",
+      "Flight tracking, air traffic and aircraft identification via ICAO.",
     sources: ["OpenSky Network"],
   },
   {
     icon: "💀",
     name: "Doomsday",
     description:
-      "Risques naturels : séismes, événements climatiques, volcans, inondations, feux.",
+      "Natural hazards: earthquakes, climate events, volcanoes, floods, wildfires.",
     sources: ["NASA EONET", "USGS"],
   },
   {
     icon: "⚔️",
     name: "Conflict",
     description:
-      "Conflits armés, géopolitique, manifestations et veille médiatique.",
+      "Armed conflicts, geopolitics, protests and media monitoring.",
     sources: ["ACLED", "GDELT"],
   },
   {
     icon: "☀️",
     name: "Solar System",
     description:
-      "Éruptions solaires, astéroïdes proches (NEO) et météo spatiale.",
+      "Solar flares, near-Earth objects (NEO) and space weather.",
     sources: ["NASA DONKI", "NASA NeoWs"],
   },
 ];
 
 const sharedTools = [
-  { name: "Geocoding", description: "Résolution de noms de lieux en coordonnées GPS" },
-  { name: "Météo", description: "Conditions météorologiques en temps réel" },
+  { name: "Geocoding", description: "Place name resolution to GPS coordinates" },
+  { name: "Weather", description: "Real-time weather conditions" },
 ];
 
 export default function AboutPage() {
@@ -65,7 +65,7 @@ export default function AboutPage() {
           style={{ color: "var(--muted)" }}
         >
           <ArrowLeft size={14} />
-          Retour
+          Back
         </Link>
 
         <h1
@@ -78,23 +78,23 @@ export default function AboutPage() {
           className="text-sm uppercase tracking-[0.3em] mb-16"
           style={{ color: "var(--muted)" }}
         >
-          Comment fonctionne OmniCAT
+          How OmniCAT works
         </p>
 
         {/* Orchestrator */}
         <section className="mb-16">
           <h2 className="text-xs uppercase tracking-widest mb-6" style={{ color: "var(--muted)" }}>
-            Orchestrateur
+            Orchestrator
           </h2>
           <div
             className="border p-6 rounded-none"
             style={{ borderColor: "var(--border)", background: "var(--card)" }}
           >
             <p className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
-              Le <span className="text-white font-medium">routeur LLM</span> analyse chaque requête
-              et décide quel(s) agent(s) spécialisé(s) mobiliser. Les agents sélectionnés sont
-              lancés <span className="text-white font-medium">en parallèle</span>, puis leurs
-              résultats sont assemblés en un briefing structuré.
+              The <span className="text-white font-medium">LLM router</span> analyzes each query
+              and decides which specialized agent(s) to mobilize. Selected agents are
+              launched <span className="text-white font-medium">in parallel</span>, then their
+              results are assembled into a structured briefing.
             </p>
 
             {/* Flow diagram */}
@@ -103,14 +103,14 @@ export default function AboutPage() {
                 className="border px-4 py-2 text-xs uppercase tracking-widest"
                 style={{ borderColor: "var(--border)" }}
               >
-                Requête utilisateur
+                User query
               </div>
               <div className="w-px h-6" style={{ background: "var(--border)" }} />
               <div
                 className="border px-4 py-2 text-xs uppercase tracking-widest text-white"
                 style={{ borderColor: "rgba(255,255,255,0.3)" }}
               >
-                Orchestrateur — Routing LLM
+                Orchestrator — LLM Routing
               </div>
               <div className="flex items-start gap-8 mt-2">
                 {agents.map((a) => (
@@ -137,7 +137,7 @@ export default function AboutPage() {
         {/* Agents */}
         <section className="mb-16">
           <h2 className="text-xs uppercase tracking-widest mb-6" style={{ color: "var(--muted)" }}>
-            Agents spécialisés
+            Specialized agents
           </h2>
           <div className="flex flex-col gap-4">
             {agents.map((agent) => (
@@ -172,7 +172,7 @@ export default function AboutPage() {
         {/* Shared tools */}
         <section className="mb-16">
           <h2 className="text-xs uppercase tracking-widest mb-6" style={{ color: "var(--muted)" }}>
-            Outils partagés
+            Shared tools
           </h2>
           <div className="flex flex-col gap-4">
             {sharedTools.map((tool) => (
@@ -193,7 +193,7 @@ export default function AboutPage() {
         {/* Tech stack */}
         <section>
           <h2 className="text-xs uppercase tracking-widest mb-6" style={{ color: "var(--muted)" }}>
-            Stack technique
+            Tech stack
           </h2>
           <div
             className="border p-6 rounded-none text-sm leading-relaxed"
@@ -202,7 +202,7 @@ export default function AboutPage() {
             <div className="grid grid-cols-2 gap-y-3 gap-x-8">
               <span className="text-white">LLM</span>
               <span>Mistral via AWS Bedrock</span>
-              <span className="text-white">Framework agents</span>
+              <span className="text-white">Agent framework</span>
               <span>Strands Agents</span>
               <span className="text-white">Backend</span>
               <span>FastAPI + SSE streaming</span>
