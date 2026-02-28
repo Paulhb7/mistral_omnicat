@@ -92,7 +92,7 @@ export default function IntelPage() {
   const [isListening, setIsListening] = useState(false);
   const analyserRef   = useRef<AnalyserNode | null>(null);
   const audioCtxRef   = useRef<AudioContext | null>(null);
-  const recognRef     = useRef<SpeechRecognition | null>(null);
+  const mediaRecRef   = useRef<MediaRecorder | null>(null);
   const voiceModeRef  = useRef(false);
   const handleSearchRef = useRef<(q: string) => void>(() => {});
 
@@ -117,45 +117,66 @@ export default function IntelPage() {
     return { ctx: audioCtxRef.current, analyser: analyserRef.current };
   }, []);
 
-  // ── STT — listen via Web Speech API (Voxtral later) ───────────────────────
+  // ── STT — record audio via MediaRecorder, transcribe via Voxtral ─────────
 
-  const startListening = useCallback(() => {
-    const SpeechRecog = window.SpeechRecognition || (window as unknown as { webkitSpeechRecognition: typeof SpeechRecognition }).webkitSpeechRecognition;
-    if (!SpeechRecog) return;
-
-    if (recognRef.current) {
-      try { recognRef.current.stop(); } catch { /* ignore */ }
+  const startListening = useCallback(async () => {
+    // Stop any existing recorder
+    if (mediaRecRef.current && mediaRecRef.current.state !== 'inactive') {
+      mediaRecRef.current.stop();
     }
 
-    const recog = new SpeechRecog();
-    recog.lang = 'en-US';
-    recog.continuous = false;
-    recog.interimResults = false;
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      console.error('Microphone access denied');
+      return;
+    }
 
-    recog.onstart = () => {
-      setIsListening(true);
-      setStatusText('LISTENING . . .');
-    };
+    setIsListening(true);
+    setStatusText('LISTENING . . .');
 
-    recog.onresult = (e: SpeechRecognitionEvent) => {
-      const transcript = e.results[0]?.[0]?.transcript;
-      if (transcript) {
-        setIsListening(false);
-        handleSearchRef.current(transcript);
-      }
-    };
+    const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+    const chunks: Blob[] = [];
 
-    recog.onerror = () => {
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+    recorder.onstop = async () => {
+      // Stop mic stream
+      stream.getTracks().forEach(t => t.stop());
       setIsListening(false);
-      if (voiceModeRef.current) {
-        setTimeout(() => { if (voiceModeRef.current) startListening(); }, 500);
+
+      if (chunks.length === 0) return;
+
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      const formData = new FormData();
+      formData.append('file', blob, 'voice.webm');
+
+      setStatusText('TRANSCRIBING . . .');
+      try {
+        const resp = await fetch('http://localhost:8000/stt', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.text) {
+          handleSearchRef.current(data.text);
+        } else if (data.error) {
+          console.error('STT error:', data.error);
+          setStatusText('STT ERROR');
+          if (voiceModeRef.current) setTimeout(() => { if (voiceModeRef.current) startListening(); }, 1000);
+        }
+      } catch (err) {
+        console.error('STT fetch error:', err);
+        setStatusText('STT ERROR');
+        if (voiceModeRef.current) setTimeout(() => { if (voiceModeRef.current) startListening(); }, 1000);
       }
     };
 
-    recog.onend = () => setIsListening(false);
+    mediaRecRef.current = recorder;
+    recorder.start();
 
-    recognRef.current = recog;
-    recog.start();
+    // Auto-stop after 10 seconds of silence / max recording
+    setTimeout(() => {
+      if (recorder.state === 'recording') recorder.stop();
+    }, 10000);
   }, []);
 
   // ── TTS — speak text aloud (Web Speech for now, ElevenLabs later) ─────────
@@ -193,8 +214,8 @@ export default function IntelPage() {
       setIsListening(false);
       setIsSpeaking(false);
       window.speechSynthesis.cancel();
-      if (recognRef.current) {
-        try { recognRef.current.stop(); } catch { /* ignore */ }
+      if (mediaRecRef.current && mediaRecRef.current.state !== 'inactive') {
+        mediaRecRef.current.stop();
       }
       setStatusText('READY');
     } else {
@@ -339,19 +360,20 @@ export default function IntelPage() {
 
       {/* Navbar */}
       <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', background: theme.bg, borderBottom: `1px solid ${theme.border}`, zIndex: 80, fontFamily: mono, transition: 'background 0.5s ease, border-color 0.5s ease' }}>
-        <Link href="/" style={{ fontSize: 12, fontWeight: 600, letterSpacing: 4, color: theme.accent, textDecoration: 'none', animation: isCyber ? 'neon-flicker 4s ease-in-out infinite' : 'none', textShadow: isCyber ? `0 0 8px ${theme.accent}` : 'none' }}>
+        <Link href="/" style={{ fontSize: isCyber ? 15 : 12, fontWeight: 700, letterSpacing: isCyber ? 6 : 4, color: theme.accent, textDecoration: 'none', animation: isCyber ? 'neon-flicker 4s ease-in-out infinite' : 'none', textShadow: isCyber ? `0 0 10px ${theme.accent}, 0 0 20px ${theme.accent}, 0 0 40px ${theme.accent}` : 'none' }}>
           Omni<strong>CAT</strong>
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 9, letterSpacing: 3, color: theme.fgDim, textTransform: 'uppercase' }}>
-          <div style={{ width: 5, height: 5, borderRadius: '50%', background: theme.accent, animation: 'pulse 1.6s ease-in-out infinite', flexShrink: 0, boxShadow: isCyber ? `0 0 6px ${theme.accent}` : 'none' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: isCyber ? 11 : 9, letterSpacing: isCyber ? 4 : 3, color: isCyber ? theme.fg : theme.fgDim, textTransform: 'uppercase', textShadow: isCyber ? `0 0 8px ${theme.accent}` : 'none' }}>
+          <div style={{ width: isCyber ? 7 : 5, height: isCyber ? 7 : 5, borderRadius: '50%', background: theme.accent, animation: 'pulse 1.6s ease-in-out infinite', flexShrink: 0, boxShadow: isCyber ? `0 0 8px ${theme.accent}, 0 0 16px ${theme.accent}` : 'none' }} />
           {modeText}
           {agentMode && (
             <span style={{
-              fontSize: 7, letterSpacing: 2, padding: '2px 7px',
+              fontSize: isCyber ? 9 : 7, letterSpacing: isCyber ? 3 : 2, padding: '2px 7px',
               border: `1px solid ${theme.accentBorder}`,
               color: theme.accent,
               textTransform: 'uppercase',
-              textShadow: isCyber ? `0 0 4px ${theme.accent}` : 'none',
+              textShadow: isCyber ? `0 0 6px ${theme.accent}, 0 0 12px ${theme.accent}` : 'none',
+              boxShadow: isCyber ? `0 0 8px ${theme.accentDim}, inset 0 0 6px ${theme.accentDim}` : 'none',
             }}>
               {agentMode.toUpperCase()} AGENT
             </span>
@@ -366,11 +388,12 @@ export default function IntelPage() {
               background: isCyber ? theme.accentDim : 'transparent',
               border: `1px solid ${isCyber ? theme.accentBorder : theme.border}`,
               color: isCyber ? theme.accent : theme.fgDim,
-              fontFamily: mono, fontSize: 8, letterSpacing: 2,
-              padding: '4px 10px', cursor: 'pointer', textTransform: 'uppercase',
+              fontFamily: mono, fontSize: isCyber ? 10 : 8, letterSpacing: isCyber ? 3 : 2,
+              padding: isCyber ? '5px 14px' : '4px 10px', cursor: 'pointer', textTransform: 'uppercase',
               transition: 'all 0.3s ease',
-              boxShadow: isCyber ? `0 0 8px ${theme.accentDim}, inset 0 0 8px ${theme.accentDim}` : 'none',
-              textShadow: isCyber ? `0 0 4px ${theme.accent}` : 'none',
+              fontWeight: isCyber ? 600 : 400,
+              boxShadow: isCyber ? `0 0 12px ${theme.accentDim}, 0 0 24px ${theme.accentDim}, inset 0 0 10px ${theme.accentDim}` : 'none',
+              textShadow: isCyber ? `0 0 6px ${theme.accent}, 0 0 12px ${theme.accent}` : 'none',
             }}
           >
             {isCyber ? '\u25c8 CYBER' : '\u25cb CYBER'}
@@ -405,8 +428,8 @@ export default function IntelPage() {
                 <div style={{ width: 12, height: 12, borderRadius: '50%', background: theme.accent, animation: 'pulse 1.6s ease-in-out infinite', boxShadow: isCyber ? `0 0 10px ${theme.accent}` : 'none' }} />
               </div>
 
-              <div style={{ fontSize: 28, color: theme.fgMuted }}>{'\u25ce'}</div>
-              <div style={{ fontSize: 10, letterSpacing: 2, lineHeight: 2, color: theme.fgMuted, textTransform: 'uppercase' }}>
+              <div style={{ fontSize: isCyber ? 36 : 28, color: isCyber ? theme.accent : theme.fgMuted, textShadow: isCyber ? `0 0 12px ${theme.accent}, 0 0 30px ${theme.accent}` : 'none', opacity: isCyber ? 0.6 : 1 }}>{'\u25ce'}</div>
+              <div style={{ fontSize: isCyber ? 12 : 10, letterSpacing: isCyber ? 3 : 2, lineHeight: 2, color: isCyber ? theme.fgDim : theme.fgMuted, textTransform: 'uppercase', textShadow: isCyber ? `0 0 6px ${theme.accent}` : 'none' }}>
                 Ask about any location<br />or enter a query
               </div>
               <div style={{ fontSize: 8, color: theme.fgMuted, letterSpacing: 1 }}>
@@ -440,8 +463,8 @@ export default function IntelPage() {
           {showLoadingChips && (
             <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {tools.map(chip => (
-                <div key={chip.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 9, letterSpacing: 2, color: chip.status === 'done' ? theme.fgMuted : theme.fgDim, textTransform: 'uppercase' }}>
-                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: theme.accent, animation: chip.status === 'running' ? 'pulse 0.6s ease-in-out infinite' : 'none', opacity: chip.status === 'done' ? 0.2 : 1, flexShrink: 0, boxShadow: isCyber && chip.status === 'running' ? `0 0 6px ${theme.accent}` : 'none' }} />
+                <div key={chip.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: isCyber ? 11 : 9, letterSpacing: isCyber ? 3 : 2, color: chip.status === 'done' ? theme.fgMuted : (isCyber ? theme.fg : theme.fgDim), textTransform: 'uppercase', textShadow: isCyber && chip.status === 'running' ? `0 0 6px ${theme.accent}` : 'none' }}>
+                  <div style={{ width: isCyber ? 7 : 5, height: isCyber ? 7 : 5, borderRadius: '50%', background: theme.accent, animation: chip.status === 'running' ? 'pulse 0.6s ease-in-out infinite' : 'none', opacity: chip.status === 'done' ? 0.2 : 1, flexShrink: 0, boxShadow: isCyber && chip.status === 'running' ? `0 0 8px ${theme.accent}, 0 0 16px ${theme.accent}` : 'none' }} />
                   {TOOL_LABELS[chip.name] ?? chip.name}
                 </div>
               ))}
@@ -451,8 +474,8 @@ export default function IntelPage() {
           {/* Intel header */}
           {hasResults && (
             <div style={{ padding: '14px 16px 10px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
-              <div style={{ fontSize: 8, letterSpacing: 4, color: theme.fgDim, textTransform: 'uppercase', marginBottom: 5 }}>Intelligence Brief</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: theme.accent, letterSpacing: 1, textShadow: isCyber ? `0 0 6px ${theme.accent}` : 'none' }}>
+              <div style={{ fontSize: isCyber ? 10 : 8, letterSpacing: isCyber ? 5 : 4, color: isCyber ? theme.accent : theme.fgDim, textTransform: 'uppercase', marginBottom: 5, textShadow: isCyber ? `0 0 8px ${theme.accent}, 0 0 16px ${theme.accent}` : 'none' }}>Intelligence Brief</div>
+              <div style={{ fontSize: isCyber ? 16 : 13, fontWeight: 700, color: theme.accent, letterSpacing: isCyber ? 2 : 1, textShadow: isCyber ? `0 0 8px ${theme.accent}, 0 0 20px ${theme.accent}, 0 0 40px ${theme.accent}` : 'none' }}>
                 {location?.name.toUpperCase() ?? '\u2014'}
               </div>
               <div style={{ fontSize: 9, color: theme.fgDim, marginTop: 2 }}>
@@ -472,7 +495,7 @@ export default function IntelPage() {
                 sandbox="allow-scripts allow-same-origin"
               />
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(to right, ${theme.accentBorder}, transparent)`, pointerEvents: 'none' }} />
-              <div style={{ position: 'absolute', bottom: 7, left: 10, fontSize: 7, letterSpacing: 2, color: theme.accent, opacity: 0.75, textTransform: 'uppercase', pointerEvents: 'none', fontFamily: mono }}>
+              <div style={{ position: 'absolute', bottom: 7, left: 10, fontSize: isCyber ? 9 : 7, letterSpacing: isCyber ? 3 : 2, color: theme.accent, opacity: 0.75, textTransform: 'uppercase', pointerEvents: 'none', fontFamily: mono, textShadow: isCyber ? `0 0 6px ${theme.accent}, 0 0 14px ${theme.accent}` : 'none' }}>
                 {location.lat.toFixed(4)}{'\u00b0'}N {'\u00b7'} {location.lng.toFixed(4)}{'\u00b0'}E
               </div>
               <div style={{ position: 'absolute', top: 7, left: 7, width: 10, height: 10, borderTop: `1px solid ${theme.accentBorder}`, borderLeft: `1px solid ${theme.accentBorder}`, pointerEvents: 'none' }} />

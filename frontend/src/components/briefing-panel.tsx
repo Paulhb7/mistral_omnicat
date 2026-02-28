@@ -26,15 +26,17 @@ export function BriefingPanel({ show, width, briefing, agentMode, monoFont, onCl
     }}>
       <div style={{ padding: '14px 16px 12px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
         <div>
-          <div style={{ fontSize: 7, letterSpacing: 4, color: theme.accent, textTransform: 'uppercase', marginBottom: 7, textShadow: isCyber ? `0 0 6px ${theme.accent}` : 'none' }}>
+          <div style={{ fontSize: isCyber ? 11 : 7, letterSpacing: isCyber ? 6 : 4, color: theme.accent, textTransform: 'uppercase', marginBottom: 7, textShadow: isCyber ? `0 0 8px ${theme.accent}, 0 0 20px ${theme.accent}, 0 0 40px ${theme.accent}` : 'none', fontWeight: isCyber ? 600 : 400 }}>
             Intelligence Brief
           </div>
           {agentMode && (
             <span style={{
-              fontSize: 7, letterSpacing: 2, padding: '2px 7px',
+              fontSize: isCyber ? 9 : 7, letterSpacing: isCyber ? 3 : 2, padding: isCyber ? '3px 10px' : '2px 7px',
               border: `1px solid ${theme.accentBorder}`,
               color: theme.accent,
               textTransform: 'uppercase', display: 'inline-block',
+              textShadow: isCyber ? `0 0 6px ${theme.accent}, 0 0 12px ${theme.accent}` : 'none',
+              boxShadow: isCyber ? `0 0 8px ${theme.accentDim}, inset 0 0 6px ${theme.accentDim}` : 'none',
             }}>
               {agentMode.toUpperCase()} AGENT
             </span>

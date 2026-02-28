@@ -62,6 +62,16 @@ body {
   97% { opacity: 1; }
 }
 
+@keyframes neon-breathe {
+  0%, 100% { text-shadow: 0 0 6px var(--orange), 0 0 14px var(--orange), 0 0 30px var(--orange); }
+  50%      { text-shadow: 0 0 10px var(--orange), 0 0 22px var(--orange), 0 0 50px var(--orange), 0 0 80px var(--orange); }
+}
+
+/* Cyberpunk: bigger, glowier text globally */
+[data-theme="cyberpunk"] nav { letter-spacing: 0.15em !important; }
+[data-theme="cyberpunk"] input { text-shadow: 0 0 6px rgba(0, 240, 255, 0.4); }
+[data-theme="cyberpunk"] input::placeholder { color: rgba(0, 240, 255, 0.25) !important; }
+
 ::selection {
   background: var(--orange);
   color: var(--bg);

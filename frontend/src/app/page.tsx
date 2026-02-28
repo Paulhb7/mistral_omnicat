@@ -166,15 +166,16 @@ export default function Home() {
         <h1
           style={{
             position: "relative", zIndex: 1,
-            fontSize: "clamp(52px, 9vw, 104px)",
-            fontWeight: 700,
+            fontSize: isCyber ? "clamp(60px, 10vw, 120px)" : "clamp(52px, 9vw, 104px)",
+            fontWeight: isCyber ? 800 : 700,
             lineHeight: 1.0,
-            letterSpacing: "-0.04em",
+            letterSpacing: isCyber ? "-0.02em" : "-0.04em",
             marginBottom: 28,
             color: theme.fg,
+            textShadow: isCyber ? `0 0 30px rgba(0, 240, 255, 0.3)` : "none",
           }}
         >
-          Omni<span style={{ color: theme.accent, textShadow: isCyber ? `0 0 20px ${theme.accent}, 0 0 40px ${theme.accent}` : "none" }}>CAT</span>
+          Omni<span style={{ color: theme.accent, textShadow: isCyber ? `0 0 20px ${theme.accent}, 0 0 50px ${theme.accent}, 0 0 100px ${theme.accent}` : "none", animation: isCyber ? "neon-breathe 3s ease-in-out infinite" : "none" }}>CAT</span>
         </h1>
 
         {/* Description */}
@@ -197,8 +198,8 @@ export default function Home() {
         <p
           style={{
             position: "relative", zIndex: 1,
-            fontSize: "clamp(13px, 1.4vw, 15px)",
-            color: theme.fgMuted,
+            fontSize: isCyber ? "clamp(14px, 1.6vw, 17px)" : "clamp(13px, 1.4vw, 15px)",
+            color: isCyber ? theme.fgDim : theme.fgMuted,
             maxWidth: 500,
             lineHeight: 1.7,
             marginBottom: 52,
@@ -223,7 +224,7 @@ export default function Home() {
               textDecoration: "none",
               fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
               transition: "opacity 0.15s, box-shadow 0.3s ease",
-              boxShadow: isCyber ? `0 0 20px ${theme.accentDim}, 0 0 40px ${theme.accentDim}` : "none",
+              boxShadow: isCyber ? `0 0 20px ${theme.accent}, 0 0 40px ${theme.accentDim}, 0 0 80px ${theme.accentDim}` : "none",
             }}
             className="hover:opacity-80"
           >

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { useTheme } from '@/context/theme-context';
 
 interface OmniOrbProps {
   isSpeaking: boolean;
@@ -11,6 +12,12 @@ interface OmniOrbProps {
 export function OmniOrb({ isSpeaking, analyser }: OmniOrbProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef({ isSpeaking, analyser });
+  const { themeKey } = useTheme();
+  const isCyber = themeKey === 'cyberpunk';
+
+  // Store theme in ref so animation loop can read it
+  const themeRef = useRef(isCyber);
+  useEffect(() => { themeRef.current = isCyber; }, [isCyber]);
 
   useEffect(() => {
     stateRef.current = { isSpeaking, analyser };
@@ -117,6 +124,7 @@ export function OmniOrb({ isSpeaking, analyser }: OmniOrbProps) {
       animId = requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
       const { isSpeaking, analyser } = stateRef.current;
+      const cyber = themeRef.current;
 
       // Audio sampling
       let avgFreq = 0;
@@ -164,13 +172,29 @@ export function OmniOrb({ isSpeaking, analyser }: OmniOrbProps) {
       halo.rotation.y -= 0.0025;
       halo.rotation.x  = Math.cos(t * 0.2) * 0.05;
 
-      // Color & size reactivity
+      // Color & size reactivity — switch palette based on theme
       const bright = isSpeaking ? 1 + avgFreq * 0.6 : 0.85;
-      mat.color.setRGB(
-        Math.min(1, 0.98 * bright),
-        Math.min(1, 0.31 * bright),
-        Math.min(1, 0.06 * bright),
-      );
+      if (cyber) {
+        // Cyberpunk: neon cyan core, magenta halo
+        mat.color.setRGB(
+          Math.min(1, 0.0 * bright),
+          Math.min(1, 0.94 * bright),
+          Math.min(1, 1.0 * bright),
+        );
+        atmMat.color.setRGB(
+          Math.min(1, 1.0 * bright * 0.7),
+          Math.min(1, 0.0),
+          Math.min(1, 0.67 * bright),
+        );
+      } else {
+        // OmniCAT: warm orange
+        mat.color.setRGB(
+          Math.min(1, 0.98 * bright),
+          Math.min(1, 0.31 * bright),
+          Math.min(1, 0.06 * bright),
+        );
+        atmMat.color.setRGB(1, 0.44, 0.19);
+      }
       mat.size = isSpeaking ? 0.048 + avgFreq * 0.025 : 0.042;
       atmMat.opacity = isSpeaking ? 0.38 + avgFreq * 0.35 : 0.12;
 
@@ -197,8 +221,12 @@ export function OmniOrb({ isSpeaking, analyser }: OmniOrbProps) {
         transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.5s ease',
         transform: isSpeaking ? 'scale(1.14)' : 'scale(1)',
         filter: isSpeaking
-          ? 'drop-shadow(0 0 22px rgba(250, 80, 15, 0.85))'
-          : 'drop-shadow(0 0 6px rgba(250, 80, 15, 0.22))',
+          ? isCyber
+            ? 'drop-shadow(0 0 28px rgba(0, 240, 255, 0.9)) drop-shadow(0 0 60px rgba(255, 0, 170, 0.4))'
+            : 'drop-shadow(0 0 22px rgba(250, 80, 15, 0.85))'
+          : isCyber
+            ? 'drop-shadow(0 0 10px rgba(0, 240, 255, 0.35)) drop-shadow(0 0 30px rgba(255, 0, 170, 0.15))'
+            : 'drop-shadow(0 0 6px rgba(250, 80, 15, 0.22))',
       }}
     >
       <div ref={mountRef} />

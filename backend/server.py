@@ -3,9 +3,11 @@ FastAPI server — exposes the orchestrator via SSE streaming.
 """
 import json
 import logging
+import os
 
+import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -72,6 +74,34 @@ async def stream_endpoint(request: ChatRequest):
             yield "data: [DONE]\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+@app.post("/stt")
+async def stt_endpoint(file: UploadFile = File(...)):
+    """
+    Speech-to-text via Voxtral (Mistral Audio API).
+    Accepts an audio file upload, returns the transcript.
+    """
+    api_key = os.getenv("MISTRAL_API_KEY")
+    if not api_key:
+        return {"error": "MISTRAL_API_KEY not configured"}
+
+    audio_bytes = await file.read()
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            "https://api.mistral.ai/v1/audio/transcriptions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            files={"file": (file.filename or "audio.webm", audio_bytes, file.content_type or "audio/webm")},
+            data={"model": "voxtral-mini-2602"},
+        )
+
+    if resp.status_code != 200:
+        logger.error(f"Voxtral STT error {resp.status_code}: {resp.text}")
+        return {"error": f"STT failed: {resp.status_code}"}
+
+    result = resp.json()
+    return {"text": result.get("text", "")}
 
 
 if __name__ == "__main__":
