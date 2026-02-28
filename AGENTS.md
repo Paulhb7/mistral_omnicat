@@ -24,7 +24,8 @@ backend/
 │   ├── aviation_agent.py  # Aircraft tracking
 │   ├── doomsday_agent.py  # Natural hazard assessment
 │   ├── conflict_agent.py  # Armed conflicts & geopolitics
-│   └── solar_system_agent.py  # Space weather
+│   ├── solar_system_agent.py  # Space weather
+│   └── milky_way_agent.py    # Exoplanet research
 ├── tools/
 │   ├── geo_tools.py       # Geocoding (Nominatim), weather (Open-Meteo)
 │   ├── aviation_tools.py  # OpenSky Network, ADS-B Exchange
@@ -32,6 +33,7 @@ backend/
 │   ├── doomsday_tools.py  # NASA EONET, USGS
 │   ├── conflict_tools.py  # ACLED, GDELT
 │   ├── solar_tools.py     # NASA DONKI, NASA NeoWs
+│   ├── milky_way_tools.py # NASA Exoplanet Archive, arXiv
 │   └── data_bus.py        # Event propagation between agents
 ├── prompts/               # System prompts for each agent (Markdown)
 ├── tests/                 # pytest unit & integration tests
@@ -76,6 +78,11 @@ frontend/
 ### Solar System Agent (`agents/solar_system_agent.py`)
 - Solar flares and space weather via NASA DONKI
 - Near-Earth objects and asteroid tracking via NASA NeoWs
+
+### Milky Way Agent (`agents/milky_way_agent.py`)
+- Exoplanet data from NASA Exoplanet Archive (TAP API)
+- Scientific papers from arXiv
+- Habitability assessment and research briefings
 
 Specialist agents use `mistral.ministral-3-14b-instruct` model.
 

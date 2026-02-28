@@ -19,6 +19,7 @@ from agents.agent_tools import (
     doomsday_analyst,
     conflict_analyst,
     solar_system_analyst,
+    milky_way_analyst,
 )
 from tools.geo_tools import geocode_location, get_weather
 from tools.data_bus import drain as _drain_bus
@@ -29,6 +30,7 @@ from agents.aviation_agent import create_aviation_agent  # noqa: F401
 from agents.doomsday_agent import create_doomsday_agent  # noqa: F401
 from agents.solar_system_agent import create_solar_system_agent  # noqa: F401
 from agents.conflict_agent import create_conflict_agent  # noqa: F401
+from agents.milky_way_agent import create_milky_way_agent  # noqa: F401
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
@@ -46,6 +48,7 @@ _AGENT_MAP = {
     "doomsday_analyst": "doomsday",
     "conflict_analyst": "conflict",
     "solar_system_analyst": "solar_system",
+    "milky_way_analyst": "milky_way",
 }
 
 
@@ -68,6 +71,7 @@ def _get_orchestrator_agent(session_id: str) -> Agent:
             doomsday_analyst,
             conflict_analyst,
             solar_system_analyst,
+            milky_way_analyst,
             geocode_location,
             get_weather,
         ],
@@ -142,6 +146,7 @@ def _format_briefing(query: str, results: dict[str, str]) -> str:
         "doomsday": "DOOMSDAY — NATURAL HAZARDS",
         "conflict": "CONFLICT — GEOPOLITICS & NEWS",
         "solar_system": "SOLAR SYSTEM",
+        "milky_way": "MILKY WAY — EXOPLANET RESEARCH",
     }
 
     lines = []

@@ -11,6 +11,7 @@ from agents.aviation_agent import create_aviation_agent
 from agents.doomsday_agent import create_doomsday_agent
 from agents.conflict_agent import create_conflict_agent
 from agents.solar_system_agent import create_solar_system_agent
+from agents.milky_way_agent import create_milky_way_agent
 
 
 @tool
@@ -99,5 +100,23 @@ def solar_system_analyst(query: str) -> str:
         Space weather report with solar activity and NEO tracking data.
     """
     agent = create_solar_system_agent()
+    result = agent(query)
+    return str(result)
+
+
+@tool
+def milky_way_analyst(query: str) -> str:
+    """Research exoplanets using NASA Exoplanet Archive data and arXiv scientific papers.
+
+    Use this tool for anything related to: exoplanets, extrasolar planets, habitable zones,
+    planetary systems, Kepler, TRAPPIST, TESS discoveries, exoplanet atmospheres, biosignatures.
+
+    Args:
+        query: The exoplanet research question to analyze.
+
+    Returns:
+        Exoplanet research briefing with NASA data and latest scientific findings.
+    """
+    agent = create_milky_way_agent()
     result = agent(query)
     return str(result)

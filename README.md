@@ -16,13 +16,13 @@ OSINT (Open Source Intelligence) analysis system for maritime, aerial, geopoliti
                            │
 ┌──────────────────────────▼──────────────────────────────────────┐
 │                       ORCHESTRATOR                               │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────┐ │
-│  │ Maritime │ │ Aviation │ │ Doomsday │ │ Conflict │ │ Solar │ │
-│  │ Agent    │ │ Agent    │ │ Agent    │ │ Agent    │ │ Agent │ │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬───┘ │
-└───────┼────────────┼────────────┼────────────┼────────────┼─────┘
-        │            │            │            │            │
-┌───────▼────────────▼────────────▼────────────▼────────────▼─────┐
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌───────┐ ┌───────┐│
+│  │Maritime│ │Aviation│ │Doomsday│ │Conflict│ │ Solar │ │Milky  ││
+│  │ Agent  │ │ Agent  │ │ Agent  │ │ Agent  │ │ Agent │ │  Way  ││
+│  └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬───┘ └───┬───┘│
+└──────┼──────────┼──────────┼──────────┼──────────┼─────────┼────┘
+       │          │          │          │          │         │
+┌──────▼──────────▼──────────▼──────────▼──────────▼─────────▼────┐
 │                        TOOLS LAYER                               │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
 │  │ Geo Tools   │  │ Aviation    │  │ Maritime    │              │
@@ -32,10 +32,10 @@ OSINT (Open Source Intelligence) analysis system for maritime, aerial, geopoliti
 │  │ Weather     │  │ Doomsday    │  │ Conflict    │              │
 │  │ (Open-Meteo)│  │ (NASA/USGS) │  │ (ACLED/GDELT│              │
 │  └─────────────┘  └─────────────┘  └─────────────┘              │
-│  ┌─────────────┐                                                 │
-│  │ Solar       │                                                 │
-│  │ (NASA DONKI)│                                                 │
-│  └─────────────┘                                                 │
+│  ┌─────────────┐  ┌─────────────┐                                │
+│  │ Solar       │  │ Milky Way   │                                │
+│  │ (NASA DONKI)│  │(NASA/arXiv) │                                │
+│  └─────────────┘  └─────────────┘                                │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -65,6 +65,11 @@ OSINT (Open Source Intelligence) analysis system for maritime, aerial, geopoliti
 - Solar flares (NASA DONKI)
 - Near-Earth objects / asteroids (NASA NeoWs)
 - Space weather briefings
+
+### 6. Milky Way — Exoplanet Research
+- Exoplanet data from NASA Exoplanet Archive
+- Scientific papers from arXiv
+- Habitability assessments
 
 ## Installation
 
@@ -112,6 +117,7 @@ Open `http://localhost:3000` in your browser and enter a location or query.
 - `What aircraft are flying over Paris?`
 - `What are the risks around Kyiv?`
 - `Solar system briefing`
+- `Tell me about TRAPPIST-1 e`
 
 ## Configuration
 
@@ -156,6 +162,7 @@ Open `http://localhost:3000` in your browser and enter a location or query.
 | Doomsday | `agents/doomsday_agent.py` | Natural hazards, climate events, earthquakes |
 | Conflict | `agents/conflict_agent.py` | Armed conflicts, news monitoring |
 | Solar System | `agents/solar_system_agent.py` | Solar flares, space weather, NEOs |
+| Milky Way | `agents/milky_way_agent.py` | Exoplanet research, NASA data, arXiv papers |
 
 Specialist agents are wrapped as `@tool` decorators in `agents/agent_tools.py`, allowing the orchestrator to invoke them as callable tools.
 
@@ -173,6 +180,7 @@ The `/stream` endpoint uses Server-Sent Events (SSE). The orchestrator yields ty
 | `tools/doomsday_tools.py` | NASA EONET, USGS | Climate events, earthquakes |
 | `tools/conflict_tools.py` | ACLED, GDELT | Conflicts, news |
 | `tools/solar_tools.py` | NASA DONKI, NASA NeoWs | Solar activity, asteroids |
+| `tools/milky_way_tools.py` | NASA Exoplanet Archive, arXiv | Exoplanet data, scientific papers |
 
 ## Development
 
