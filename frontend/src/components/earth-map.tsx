@@ -140,18 +140,30 @@ export default function EarthMap({ center, climateEvents, earthquakes, conflicts
 
   // Init map once
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    if (!containerRef.current) return;
+
+    // Guard: if a previous map instance is still attached, remove it first
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+      layerRef.current = null;
+    }
 
     ensureCSS();
 
+    // Clear any stale Leaflet state on the DOM node
+    const el = containerRef.current;
+    // @ts-expect-error leaflet internal
+    if (el._leaflet_id) { delete el._leaflet_id; }
+
+    let cancelled = false;
+
     import('leaflet').then(L => {
-      if (!containerRef.current) return;
-      // @ts-expect-error leaflet internal
-      if (containerRef.current._leaflet_id) {
-        // @ts-expect-error leaflet internal
-        delete containerRef.current._leaflet_id;
-      }
+      if (cancelled || !el) return;
+      // Double-check: another effect may have already init'd
       if (mapRef.current) return;
+      // @ts-expect-error leaflet internal
+      if (el._leaflet_id) { delete el._leaflet_id; }
 
       // @ts-expect-error leaflet internal
       delete L.Icon.Default.prototype._getIconUrl;
@@ -168,7 +180,7 @@ export default function EarthMap({ center, climateEvents, earthquakes, conflicts
         document.head.appendChild(link);
       }
 
-      const map = L.map(containerRef.current!, {
+      const map = L.map(el, {
         center: [20, 15],
         zoom: 2,
         zoomControl: false,
@@ -195,13 +207,14 @@ export default function EarthMap({ center, climateEvents, earthquakes, conflicts
     });
 
     return () => {
-      mapRef.current?.remove();
-      mapRef.current   = null;
-      layerRef.current = null;
-      if (containerRef.current) {
-        // @ts-expect-error leaflet internal
-        delete containerRef.current._leaflet_id;
+      cancelled = true;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current   = null;
+        layerRef.current = null;
       }
+      // @ts-expect-error leaflet internal
+      if (el) { delete el._leaflet_id; }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

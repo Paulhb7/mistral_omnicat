@@ -472,9 +472,7 @@ export default function IntelPage() {
   // ── Sync mapAgent — only when a real agent is selected (never on reset) ───
 
   useEffect(() => {
-    if (agentMode === 'solar_system') {
-      // mapAgent + iframeSrc already set by handleSearch's detectPlanet;
-      // only fallback to generic view if handleSearch didn't detect a planet
+    if (agentMode === 'solar_system' || agentMode === 'milky_way') {
       setMapAgent(prev => prev === 'solar' ? prev : 'solar');
     } else if (agentMode !== null) {
       setMapAgent('earth');
@@ -482,13 +480,14 @@ export default function IntelPage() {
   }, [agentMode]);
 
   // ── Switch to Earth map + update mode text as soon as location arrives ────
+  // But DON'T override Solar view (for solar_system / milky_way queries)
 
   useEffect(() => {
-    if (location) {
+    if (location && agentMode !== 'solar_system' && agentMode !== 'milky_way') {
       setMapAgent('earth');
       setModeText(`EARTH · ${location.name.toUpperCase()}`);
     }
-  }, [location]);
+  }, [location, agentMode]);
 
   // ── Sync status from hook state ────────────────────────────────────────────
 
