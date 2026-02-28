@@ -15,6 +15,46 @@ const EarthMap = dynamic(() => import('@/components/earth-map'), { ssr: false })
 const SIDEBAR_W = 360;
 const BRIEF_W = 380;
 
+// NASA Eyes — hide UI chrome via query params
+const UI_Q =
+  '?featured=false&detailPanel=false&logo=false&search=false' +
+  '&shareButton=false&menu=false&collapseSettingsOptions=true&hideFullScreenToggle=true';
+const SOLAR_URL = 'https://eyes.nasa.gov/apps/solar-system/';
+const SOLAR_DEFAULT = `${SOLAR_URL}#/earth${UI_Q}`;
+
+type MapView = 'earth' | 'solar' | null;
+
+// ── Celestial body detection ─────────────────────────────────────────────────
+// keyword → NASA Eyes hash route (planets, moons, spacecraft)
+
+const CELESTIAL: [string, string][] = [
+  // Planets
+  ['mercury', 'mercury'], ['venus', 'venus'], ['earth', 'earth'],
+  ['mars', 'mars'], ['jupiter', 'jupiter'], ['saturn', 'saturn'],
+  ['uranus', 'uranus'], ['neptune', 'neptune'], ['pluto', 'pluto'],
+  ['sun', 'sun'],
+  // Major moons
+  ['moon', 'earths_moon'], ['titan', 'titan'], ['europa', 'europa'],
+  ['ganymede', 'ganymede'], ['callisto', 'callisto'], ['io', 'io'],
+  ['enceladus', 'enceladus'], ['triton', 'triton'],
+  ['phobos', 'phobos'], ['deimos', 'deimos'], ['charon', 'charon'],
+  // Spacecraft
+  ['jwst', 'sc_jwst'], ['james webb', 'sc_jwst'],
+  ['juno', 'sc_juno'], ['voyager 1', 'sc_voyager_1'], ['voyager 2', 'sc_voyager_2'],
+  ['new horizons', 'sc_new_horizons'], ['parker', 'sc_parker_solar_probe'],
+  ['europa clipper', 'sc_europa_clipper'], ['cassini', 'sc_cassini'],
+  ['lucy', 'sc_lucy'], ['osiris', 'sc_osiris_rex'],
+  ['iss', 'sc_iss'], ['hubble', 'sc_hubble'],
+];
+
+function detectCelestial(q: string): { id: string; label: string } | null {
+  const low = q.toLowerCase();
+  for (const [kw, id] of CELESTIAL) {
+    if (low.includes(kw)) return { id, label: kw.toUpperCase() };
+  }
+  return null;
+}
+
 const TOOL_LABELS: Record<string, string> = {
   geocode_location:       'GEOCODE \u00b7 location',
   get_weather:            'OPEN-METEO \u00b7 weather',
@@ -39,7 +79,13 @@ export default function IntelPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [briefingVisible, setBriefingVisible] = useState(false);
 
+  // mapAgent persists across resets — only updated when agent_selected arrives.
+  // Starts null (NASA Eyes on load), switches to 'earth' only on an Earth query.
+  const [mapAgent, setMapAgent] = useState<MapView>(null);
+  const [modeText, setModeText] = useState('SOLAR SYSTEM · EARTH');
+
   const inpRef = useRef<HTMLInputElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const { send, reset, isLoading, briefing, location, tools, panelData, error, agentMode } = useChat();
 
@@ -53,6 +99,16 @@ export default function IntelPage() {
     setStatusText('ROUTING . . .');
     setBriefingVisible(false);
 
+    // Detect celestial body — fly directly to planet, moon, or spacecraft
+    const target = detectCelestial(text);
+    if (target) {
+      setMapAgent('solar');
+      setModeText(`SOLAR SYSTEM · ${target.label}`);
+      const url = `${SOLAR_URL}#/${target.id}${UI_Q}`;
+      try { iframeRef.current?.contentWindow?.location.replace(url); }
+      catch { if (iframeRef.current) iframeRef.current.src = url; }
+    }
+
     await send(text);
   }, [send]);
 
@@ -60,6 +116,26 @@ export default function IntelPage() {
     handleSearch(inputVal);
     setInputVal('');
   }, [handleSearch, inputVal]);
+
+  // ── Sync mapAgent — only when a real agent is selected (never on reset) ───
+
+  useEffect(() => {
+    if (agentMode === 'solar_system') {
+      // mapAgent + iframeSrc already set by handleSearch's detectPlanet;
+      // only fallback to generic view if handleSearch didn't detect a planet
+      setMapAgent(prev => prev === 'solar' ? prev : 'solar');
+    } else if (agentMode !== null) {
+      setMapAgent('earth');
+    }
+  }, [agentMode]);
+
+  // ── Update mode text when location arrives ────────────────────────────────
+
+  useEffect(() => {
+    if (location && mapAgent === 'earth') {
+      setModeText(`EARTH · ${location.name.toUpperCase()}`);
+    }
+  }, [location, mapAgent]);
 
   // ── Sync status from hook state ────────────────────────────────────────────
 
@@ -96,20 +172,36 @@ export default function IntelPage() {
 
   return (
     <>
-      {/* Background map */}
-      <div style={{
-        position: 'fixed', top: 56, left: SIDEBAR_W,
-        width: showBriefingPanel ? `calc(100vw - ${SIDEBAR_W + BRIEF_W}px)` : `calc(100vw - ${SIDEBAR_W}px)`,
-        height: 'calc(100vh - 56px)', zIndex: 0,
-        transition: 'width 0.4s ease',
-      }}>
-        <EarthMap
-          center={location}
-          climateEvents={(panelData.climate as { events?: Array<{ id: string; title: string; category: string; category_id: string; date: string | null; lat: number | null; lng: number | null }> } | undefined)?.events}
-          earthquakes={(panelData.earthquakes as { earthquakes?: Array<{ magnitude: number; place: string; lat: number; lng: number; depth_km: number; date: string }> } | undefined)?.earthquakes}
-          conflicts={(panelData.conflict as { recent_events?: Array<{ date: string; type: string; location: string; fatalities: number; lat: number | null; lng: number | null }> } | undefined)?.recent_events}
+      {/* Background visualisation — Leaflet map (Earth) or NASA Eyes (Solar / idle) */}
+      {mapAgent === 'earth' ? (
+        <div style={{
+          position: 'fixed', top: 56, left: SIDEBAR_W,
+          width: showBriefingPanel ? `calc(100vw - ${SIDEBAR_W + BRIEF_W}px)` : `calc(100vw - ${SIDEBAR_W}px)`,
+          height: 'calc(100vh - 56px)', zIndex: 0,
+          transition: 'width 0.4s ease',
+        }}>
+          <EarthMap
+            center={location}
+            climateEvents={(panelData.climate as { events?: Array<{ id: string; title: string; category: string; category_id: string; date: string | null; lat: number | null; lng: number | null }> } | undefined)?.events}
+            earthquakes={(panelData.earthquakes as { earthquakes?: Array<{ magnitude: number; place: string; lat: number; lng: number; depth_km: number; date: string }> } | undefined)?.earthquakes}
+            conflicts={(panelData.conflict as { recent_events?: Array<{ date: string; type: string; location: string; fatalities: number; lat: number | null; lng: number | null }> } | undefined)?.recent_events}
+          />
+        </div>
+      ) : (
+        <iframe
+          ref={iframeRef}
+          src={SOLAR_DEFAULT}
+          style={{
+            position: 'fixed', top: 56, left: SIDEBAR_W,
+            width: showBriefingPanel ? `calc(100vw - ${SIDEBAR_W + BRIEF_W}px)` : `calc(100vw - ${SIDEBAR_W}px)`,
+            height: 'calc(100vh - 56px)', border: 'none', zIndex: 0,
+            display: 'block', transition: 'width 0.4s ease',
+          }}
+          allow="fullscreen"
+          allowFullScreen
+          title="NASA Eyes"
         />
-      </div>
+      )}
 
       {/* HUD corners */}
       <div style={{ position: 'fixed', top: 64, right: 16, width: 14, height: 14, borderTop: '1px solid rgba(255,250,235,0.25)', borderRight: '1px solid rgba(255,250,235,0.25)', pointerEvents: 'none', zIndex: 75 }} />
@@ -122,7 +214,7 @@ export default function IntelPage() {
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 9, letterSpacing: 3, color: 'rgba(255,250,235,0.35)', textTransform: 'uppercase' }}>
           <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#fa500f', animation: 'pulse 1.6s ease-in-out infinite', flexShrink: 0 }} />
-          {location ? `EARTH \u00b7 ${location.name.toUpperCase()}` : 'INTELLIGENCE MAP'}
+          {modeText}
           {agentMode && (
             <span style={{
               fontSize: 7, letterSpacing: 2, padding: '2px 7px',
@@ -137,7 +229,11 @@ export default function IntelPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
           <Link href="/about" style={{ fontSize: 11, letterSpacing: 2, color: 'rgba(255,250,235,0.4)', textDecoration: 'none', textTransform: 'uppercase' }}>About</Link>
           <button
-            onClick={() => { reset(); setBriefingVisible(false); setStatusText('READY'); }}
+            onClick={() => {
+              reset(); setBriefingVisible(false); setStatusText('READY'); setMapAgent(null); setModeText('SOLAR SYSTEM · EARTH');
+              try { iframeRef.current?.contentWindow?.location.replace(SOLAR_DEFAULT); }
+              catch { if (iframeRef.current) iframeRef.current.src = SOLAR_DEFAULT; }
+            }}
             style={{ background: 'transparent', border: '1px solid rgba(255,250,235,0.08)', color: 'rgba(255,250,235,0.3)', fontFamily: mono, fontSize: 8, letterSpacing: 2, padding: '4px 10px', cursor: 'pointer', textTransform: 'uppercase' }}
           >
             RESET
