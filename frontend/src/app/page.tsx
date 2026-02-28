@@ -2,17 +2,22 @@
 
 import Link from "next/link";
 import OrangeGlobe from "@/components/orange-globe";
+import { useTheme } from "@/context/theme-context";
 
 export default function Home() {
+  const { theme, themeKey, toggle: toggleTheme } = useTheme();
+  const isCyber = themeKey === "cyberpunk";
+
   return (
     <main
       style={{
         minHeight: "100vh",
-        background: "#111113",
-        color: "#fffaeb",
+        background: theme.bg,
+        color: theme.fg,
         fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
         display: "flex",
         flexDirection: "column",
+        transition: "background 0.5s ease, color 0.5s ease",
       }}
     >
       {/* Subtle noise texture */}
@@ -25,16 +30,27 @@ export default function Home() {
         }}
       />
 
-      {/* Orange glow — top left */}
+      {/* Accent glow — top left */}
       <div
         aria-hidden
         style={{
           position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-          background: "radial-gradient(ellipse 60% 40% at 10% 0%, rgba(250,80,15,0.12) 0%, transparent 60%)",
+          background: `radial-gradient(ellipse 60% 40% at 10% 0%, ${theme.glow} 0%, transparent 60%)`,
         }}
       />
 
-      {/* Orange wireframe globe — decorative, right side */}
+      {/* Cyberpunk: secondary glow — bottom right */}
+      {isCyber && (
+        <div
+          aria-hidden
+          style={{
+            position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `radial-gradient(ellipse 50% 40% at 90% 100%, rgba(255,0,170,0.08) 0%, transparent 60%)`,
+          }}
+        />
+      )}
+
+      {/* Wireframe globe — decorative, right side */}
       <div aria-hidden style={{
         position: "fixed", zIndex: 1, pointerEvents: "none",
         right: "-5vw", top: "50%", transform: "translateY(-50%)",
@@ -48,26 +64,45 @@ export default function Home() {
           position: "relative", zIndex: 10,
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "20px 40px",
-          borderBottom: "1px solid rgba(255,250,235,0.06)",
+          borderBottom: `1px solid ${theme.border}`,
         }}
       >
         <span
           style={{
             fontFamily: "'Roboto Mono', monospace",
             fontSize: 13, fontWeight: 500, letterSpacing: 4,
-            color: "#fa500f",
+            color: theme.accent,
+            animation: isCyber ? "neon-flicker 4s ease-in-out infinite" : "none",
+            textShadow: isCyber ? `0 0 8px ${theme.accent}` : "none",
           }}
         >
           Omni<strong>CAT</strong>
         </span>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 32, fontFamily: "'Roboto Mono', monospace" }}>
-          <Link href="/about" style={{ fontSize: 11, letterSpacing: 2, color: "rgba(255,250,235,0.4)", textDecoration: "none", textTransform: "uppercase" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, fontFamily: "'Roboto Mono', monospace" }}>
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            title="Toggle Cyberpunk mode (Ctrl+Shift+X)"
+            style={{
+              background: isCyber ? theme.accentDim : "transparent",
+              border: `1px solid ${isCyber ? theme.accentBorder : theme.border}`,
+              color: isCyber ? theme.accent : theme.fgDim,
+              fontFamily: "'Roboto Mono', monospace", fontSize: 9, letterSpacing: 2,
+              padding: "4px 10px", cursor: "pointer", textTransform: "uppercase",
+              transition: "all 0.3s ease",
+              boxShadow: isCyber ? `0 0 8px ${theme.accentDim}, inset 0 0 8px ${theme.accentDim}` : "none",
+              textShadow: isCyber ? `0 0 4px ${theme.accent}` : "none",
+            }}
+          >
+            {isCyber ? "\u25c8 CYBER" : "\u25cb CYBER"}
+          </button>
+          <Link href="/about" style={{ fontSize: 11, letterSpacing: 2, color: theme.fgDim, textDecoration: "none", textTransform: "uppercase" }}>
             About
           </Link>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, letterSpacing: 2, color: "rgba(255,250,235,0.25)", textTransform: "uppercase" }}>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#fa500f", display: "inline-block", animation: "pulse 2s ease-in-out infinite" }} />
-            Hackathon Mistral · 2026
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, letterSpacing: 2, color: theme.fgMuted, textTransform: "uppercase" }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: theme.accent, display: "inline-block", animation: "pulse 2s ease-in-out infinite", boxShadow: isCyber ? `0 0 6px ${theme.accent}` : "none" }} />
+            Hackathon Mistral {"\u00b7"} 2026
           </span>
         </div>
       </nav>
@@ -87,31 +122,32 @@ export default function Home() {
           style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             padding: "6px 14px", marginBottom: 40,
-            border: "1px solid rgba(250,80,15,0.3)",
-            background: "rgba(250,80,15,0.06)",
+            border: `1px solid ${theme.accentBorder}`,
+            background: theme.accentDim,
             fontSize: 11, letterSpacing: 2,
-            color: "#fa500f",
+            color: theme.accent,
             fontFamily: "'Roboto Mono', monospace",
             textTransform: "uppercase",
+            textShadow: isCyber ? `0 0 4px ${theme.accent}` : "none",
           }}
         >
-          <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#fa500f", display: "inline-block" }} />
-          Collect · Analyse · Prevent
+          <span style={{ width: 4, height: 4, borderRadius: "50%", background: theme.accent, display: "inline-block" }} />
+          Collect {"\u00b7"} Analyse {"\u00b7"} Prevent
         </div>
 
         {/* Radar — centered behind heading */}
         <div style={{ position: "absolute", zIndex: 0, pointerEvents: "none", opacity: 0.28 }}>
           <svg width="500" height="500" viewBox="0 0 600 600">
-            <circle cx="300" cy="300" r="100" fill="none" stroke="#fa500f" strokeWidth="0.5" />
-            <circle cx="300" cy="300" r="200" fill="none" stroke="#fa500f" strokeWidth="0.5" />
-            <circle cx="300" cy="300" r="295" fill="none" stroke="#fa500f" strokeWidth="0.5" />
-            <line x1="300" y1="5" x2="300" y2="595" stroke="#fa500f" strokeWidth="0.5" />
-            <line x1="5" y1="300" x2="595" y2="300" stroke="#fa500f" strokeWidth="0.5" />
+            <circle cx="300" cy="300" r="100" fill="none" stroke={theme.accent} strokeWidth="0.5" />
+            <circle cx="300" cy="300" r="200" fill="none" stroke={theme.accent} strokeWidth="0.5" />
+            <circle cx="300" cy="300" r="295" fill="none" stroke={theme.accent} strokeWidth="0.5" />
+            <line x1="300" y1="5" x2="300" y2="595" stroke={theme.accent} strokeWidth="0.5" />
+            <line x1="5" y1="300" x2="595" y2="300" stroke={theme.accent} strokeWidth="0.5" />
             <g className="radar-sweep">
               <defs>
                 <linearGradient id="sweep" gradientTransform="rotate(0, 0.5, 0.5)">
-                  <stop offset="0%" stopColor="#fa500f" stopOpacity="0" />
-                  <stop offset="100%" stopColor="#fa500f" stopOpacity="0.6" />
+                  <stop offset="0%" stopColor={theme.accent} stopOpacity="0" />
+                  <stop offset="100%" stopColor={theme.accent} stopOpacity="0.6" />
                 </linearGradient>
               </defs>
               <path
@@ -119,10 +155,10 @@ export default function Home() {
                 fill="url(#sweep)"
               />
             </g>
-            <circle cx="220" cy="200" r="4" fill="#fa500f" className="radar-ping" />
-            <circle cx="380" cy="350" r="3" fill="#fa500f" className="radar-ping-delayed" />
-            <circle cx="340" cy="180" r="3" fill="#fa500f" className="radar-ping" />
-            <circle cx="250" cy="380" r="4" fill="#fa500f" className="radar-ping-delayed" />
+            <circle cx="220" cy="200" r="4" fill={theme.accent} className="radar-ping" />
+            <circle cx="380" cy="350" r="3" fill={theme.accent} className="radar-ping-delayed" />
+            <circle cx="340" cy="180" r="3" fill={theme.accent} className="radar-ping" />
+            <circle cx="250" cy="380" r="4" fill={theme.accent} className="radar-ping-delayed" />
           </svg>
         </div>
 
@@ -135,10 +171,10 @@ export default function Home() {
             lineHeight: 1.0,
             letterSpacing: "-0.04em",
             marginBottom: 28,
-            color: "#fffaeb",
+            color: theme.fg,
           }}
         >
-          Omni<span style={{ color: "#fa500f" }}>CAT</span>
+          Omni<span style={{ color: theme.accent, textShadow: isCyber ? `0 0 20px ${theme.accent}, 0 0 40px ${theme.accent}` : "none" }}>CAT</span>
         </h1>
 
         {/* Description */}
@@ -146,7 +182,7 @@ export default function Home() {
           style={{
             position: "relative", zIndex: 1,
             fontSize: "clamp(16px, 2vw, 20px)",
-            color: "rgba(255,250,235,0.5)",
+            color: theme.fgDim,
             maxWidth: 500,
             lineHeight: 1.6,
             marginBottom: 14,
@@ -162,7 +198,7 @@ export default function Home() {
           style={{
             position: "relative", zIndex: 1,
             fontSize: "clamp(13px, 1.4vw, 15px)",
-            color: "rgba(255,250,235,0.35)",
+            color: theme.fgMuted,
             maxWidth: 500,
             lineHeight: 1.7,
             marginBottom: 52,
@@ -180,18 +216,19 @@ export default function Home() {
             style={{
               display: "inline-flex", alignItems: "center", gap: 10,
               padding: "14px 32px",
-              background: "#fa500f",
-              color: "#111113",
+              background: theme.accent,
+              color: theme.bg,
               fontWeight: 700, fontSize: 14,
               letterSpacing: "0.02em",
               textDecoration: "none",
               fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-              transition: "opacity 0.15s",
+              transition: "opacity 0.15s, box-shadow 0.3s ease",
+              boxShadow: isCyber ? `0 0 20px ${theme.accentDim}, 0 0 40px ${theme.accentDim}` : "none",
             }}
             className="hover:opacity-80"
           >
             Launch briefing
-            <span style={{ fontFamily: "'Roboto Mono', monospace", fontSize: 16 }}>→</span>
+            <span style={{ fontFamily: "'Roboto Mono', monospace", fontSize: 16 }}>{"\u2192"}</span>
           </Link>
           <Link
             href="/about"
@@ -199,15 +236,14 @@ export default function Home() {
               display: "inline-flex", alignItems: "center", gap: 10,
               padding: "14px 32px",
               background: "transparent",
-              color: "rgba(255,250,235,0.45)",
+              color: theme.fgDim,
               fontWeight: 500, fontSize: 14,
               letterSpacing: "0.02em",
               textDecoration: "none",
-              border: "1px solid rgba(255,250,235,0.12)",
+              border: `1px solid ${theme.border}`,
               fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
               transition: "all 0.15s",
             }}
-            className="hover:border-[rgba(255,250,235,0.3)] hover:text-[#fffaeb]"
           >
             Architecture
           </Link>
@@ -218,7 +254,7 @@ export default function Home() {
       <footer
         style={{
           position: "relative", zIndex: 10,
-          borderTop: "1px solid rgba(255,250,235,0.06)",
+          borderTop: `1px solid ${theme.border}`,
           padding: "20px 40px",
           display: "flex", alignItems: "center", justifyContent: "center",
           gap: 32, flexWrap: "wrap",
@@ -230,7 +266,7 @@ export default function Home() {
             className="source-tag"
             style={{
               fontSize: 10, letterSpacing: 2,
-              color: "rgba(255,250,235,0.18)",
+              color: theme.fgMuted,
               fontFamily: "'Roboto Mono', monospace",
               textTransform: "uppercase",
               padding: "4px 10px",
@@ -243,9 +279,9 @@ export default function Home() {
         ))}
         <style>{`
           .source-tag:hover {
-            color: #fa500f !important;
-            background: rgba(250,80,15,0.06);
-            border: 1px solid rgba(250,80,15,0.2);
+            color: ${theme.accent} !important;
+            background: ${theme.accentDim};
+            border: 1px solid ${theme.accentBorder};
             margin: -1px;
           }
         `}</style>

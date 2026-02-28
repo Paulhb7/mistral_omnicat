@@ -1,6 +1,7 @@
 'use client';
 
 import type { PanelData, LocationData } from '@/hooks/use-chat';
+import { useTheme } from '@/context/theme-context';
 
 const CATS: Record<string, { label: string; color: string }> = {
   wildfires:     { label: 'Wildfires',   color: '#ff4500' },
@@ -41,6 +42,8 @@ interface EarthPanelProps {
 }
 
 export function EarthPanel({ panelData, location }: EarthPanelProps) {
+  const { theme } = useTheme();
+
   const weather  = panelData.weather as { temperature_c: number; condition: string; wind_kmh: number; humidity_pct: number } | undefined;
   const climate  = panelData.climate as { events: Array<{ id: string; title: string; category: string; category_id: string; date: string }>; by_category: Record<string, string[]> } | undefined;
   const seismic  = panelData.earthquakes as { earthquakes: Array<{ magnitude: number; place: string; date: string; depth_km: number }> } | undefined;
@@ -56,7 +59,7 @@ export function EarthPanel({ panelData, location }: EarthPanelProps) {
       {location && (
         <div style={{ padding: '0 16px 10px' }}>
           <span style={{ fontSize: 8, letterSpacing: 3, padding: '2px 8px', border: `1px solid ${risk.color}`, color: risk.color, textTransform: 'uppercase' }}>
-            RISK \u00b7 {risk.label}
+            RISK {'\u00b7'} {risk.label}
           </span>
         </div>
       )}
@@ -101,8 +104,8 @@ export function EarthPanel({ panelData, location }: EarthPanelProps) {
               <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 16px' }}>
                 <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 5px', background: `${mc}22`, color: mc, borderRadius: 2, flexShrink: 0 }}>M{mag}</span>
                 <div>
-                  <div style={{ fontSize: 10, color: '#fffaeb', marginBottom: 2 }}>{q.place}</div>
-                  <div style={{ fontSize: 8, color: 'rgba(255,250,235,0.45)' }}>{q.date} \u00b7 {q.depth_km}km</div>
+                  <div style={{ fontSize: 10, color: theme.fg, marginBottom: 2 }}>{q.place}</div>
+                  <div style={{ fontSize: 8, color: theme.fgDim }}>{q.date} {'\u00b7'} {q.depth_km}km</div>
                 </div>
               </div>
             );
@@ -135,8 +138,8 @@ export function EarthPanel({ panelData, location }: EarthPanelProps) {
             >
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#a78bfa', flexShrink: 0, marginTop: 4, animation: 'pulse 2.5s ease-in-out infinite' }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 10, color: '#fffaeb', lineHeight: 1.4, marginBottom: 2 }}>{a.title}</div>
-                <div style={{ fontSize: 8, color: 'rgba(255,250,235,0.45)' }}>{a.source}{a.date ? ` \u00b7 ${a.date}` : ''}</div>
+                <div style={{ fontSize: 10, color: theme.fg, lineHeight: 1.4, marginBottom: 2 }}>{a.title}</div>
+                <div style={{ fontSize: 8, color: theme.fgDim }}>{a.source}{a.date ? ` \u00b7 ${a.date}` : ''}</div>
               </div>
             </div>
           ))}
@@ -144,31 +147,33 @@ export function EarthPanel({ panelData, location }: EarthPanelProps) {
       )}
 
       {nEvents === 0 && !maxMag && !news?.articles?.length && !conflict?.recent_events?.length && (
-        <div style={{ padding: '20px 16px', fontSize: 10, color: 'rgba(255,250,235,0.45)' }}>No active events detected.</div>
+        <div style={{ padding: '20px 16px', fontSize: 10, color: theme.fgDim }}>No active events detected.</div>
       )}
     </>
   );
 }
 
 function CatHeader({ label, count, color }: { label: string; count?: number; color: string }) {
+  const { theme } = useTheme();
   return (
     <div style={{ padding: '8px 16px 4px', fontSize: 8, letterSpacing: 3, color, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
       <span>{label}</span>
       {count !== undefined && (
         <span style={{ opacity: 0.6, fontSize: 8 }}>({count})</span>
       )}
-      <div style={{ flex: 1, height: 1, background: 'rgba(255,250,235,0.08)' }} />
+      <div style={{ flex: 1, height: 1, background: theme.border }} />
     </div>
   );
 }
 
 function EventRow({ color, title, meta }: { color: string; title: string; meta?: string }) {
+  const { theme } = useTheme();
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 16px' }}>
       <div style={{ width: 5, height: 5, borderRadius: '50%', background: color, flexShrink: 0, marginTop: 4, animation: 'pulse 2.5s ease-in-out infinite' }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 10, color: '#fffaeb', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 2 }}>{title}</div>
-        {meta && <div style={{ fontSize: 8, color: 'rgba(255,250,235,0.45)' }}>{meta}</div>}
+        <div style={{ fontSize: 10, color: theme.fg, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 2 }}>{title}</div>
+        {meta && <div style={{ fontSize: 8, color: theme.fgDim }}>{meta}</div>}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
+import { useTheme } from '@/context/theme-context';
 
 export default function OrangeGlobe({
   size = 640,
@@ -9,6 +10,17 @@ export default function OrangeGlobe({
   opacity?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { themeKey } = useTheme();
+  const isCyber = themeKey === 'cyberpunk';
+
+  // Color config per theme
+  const gridColor = isCyber ? 'rgba(0,240,255,1)' : 'rgba(250,110,25,1)';
+  const glowColor = isCyber ? [0, 240, 255] : [250, 80, 15];
+  const rimColor = isCyber ? 'rgba(0,240,255,0.45)' : 'rgba(250,80,15,0.45)';
+  const specColor = isCyber ? [0, 200, 255] : [255, 160, 90];
+  const sphereBase = isCyber
+    ? { a: 'rgba(8, 16, 48, 0.88)', b: 'rgba(5, 8, 20, 0.92)', c: 'rgba(4, 4, 12, 0.96)' }
+    : { a: 'rgba(48, 24, 8, 0.88)', b: 'rgba(20, 12, 5, 0.92)', c: 'rgba(6, 6, 8, 0.96)' };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -61,9 +73,9 @@ export default function OrangeGlobe({
 
       // Atmosphere glow
       const glow = ctx!.createRadialGradient(cx, cy, r * 0.82, cx, cy, r * 1.28);
-      glow.addColorStop(0,   'rgba(250,80,15,0)');
-      glow.addColorStop(0.4, 'rgba(250,80,15,0.07)');
-      glow.addColorStop(1,   'rgba(250,80,15,0)');
+      glow.addColorStop(0,   `rgba(${glowColor[0]},${glowColor[1]},${glowColor[2]},0)`);
+      glow.addColorStop(0.4, `rgba(${glowColor[0]},${glowColor[1]},${glowColor[2]},0.07)`);
+      glow.addColorStop(1,   `rgba(${glowColor[0]},${glowColor[1]},${glowColor[2]},0)`);
       ctx!.beginPath();
       ctx!.arc(cx, cy, r * 1.28, 0, Math.PI * 2);
       ctx!.fillStyle = glow;
@@ -74,9 +86,9 @@ export default function OrangeGlobe({
         cx - r * 0.3, cy - r * 0.25, r * 0.04,
         cx, cy, r,
       );
-      sg.addColorStop(0,   'rgba(48, 24, 8, 0.88)');
-      sg.addColorStop(0.5, 'rgba(20, 12, 5, 0.92)');
-      sg.addColorStop(1,   'rgba(6, 6, 8, 0.96)');
+      sg.addColorStop(0,   sphereBase.a);
+      sg.addColorStop(0.5, sphereBase.b);
+      sg.addColorStop(1,   sphereBase.c);
       ctx!.save();
       ctx!.beginPath();
       ctx!.arc(cx, cy, r, 0, Math.PI * 2);
@@ -85,7 +97,7 @@ export default function OrangeGlobe({
       ctx!.restore();
 
       // Grid
-      ctx!.strokeStyle = 'rgba(250,110,25,1)';
+      ctx!.strokeStyle = gridColor;
       ctx!.lineWidth = 0.55;
 
       for (let lat = -80; lat <= 80; lat += 20) {
@@ -114,7 +126,7 @@ export default function OrangeGlobe({
       // Sphere rim
       ctx!.beginPath();
       ctx!.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx!.strokeStyle = 'rgba(250,80,15,0.45)';
+      ctx!.strokeStyle = rimColor;
       ctx!.lineWidth = 1.6;
       ctx!.stroke();
 
@@ -123,8 +135,8 @@ export default function OrangeGlobe({
         cx - r * 0.42, cy - r * 0.38, 0,
         cx - r * 0.2,  cy - r * 0.18, r * 0.52,
       );
-      spec.addColorStop(0, 'rgba(255,160,90,0.14)');
-      spec.addColorStop(1, 'rgba(255,160,90,0)');
+      spec.addColorStop(0, `rgba(${specColor[0]},${specColor[1]},${specColor[2]},0.14)`);
+      spec.addColorStop(1, `rgba(${specColor[0]},${specColor[1]},${specColor[2]},0)`);
       ctx!.save();
       ctx!.beginPath();
       ctx!.arc(cx, cy, r, 0, Math.PI * 2);
@@ -139,7 +151,7 @@ export default function OrangeGlobe({
 
     draw();
     return () => cancelAnimationFrame(animId);
-  }, [size]);
+  }, [size, gridColor, glowColor, rimColor, specColor, sphereBase]);
 
   return (
     <canvas
