@@ -1,7 +1,25 @@
+from datetime import datetime, timezone
+
 import httpx
 from strands import tool
 
 from tools.data_bus import emit as _emit
+
+
+@tool
+def get_current_datetime() -> dict:
+    """Return the current date and time in UTC.
+
+    Returns:
+        Dictionary with date, time, day of week, and ISO timestamp.
+    """
+    now = datetime.now(timezone.utc)
+    return {
+        "date": now.strftime("%Y-%m-%d"),
+        "time": now.strftime("%H:%M:%S"),
+        "day": now.strftime("%A"),
+        "iso": now.isoformat(),
+    }
 
 # ISO 3166-1 alpha-2 → alpha-3 mapping
 _ISO2_TO_ISO3 = {
