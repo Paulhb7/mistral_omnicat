@@ -250,7 +250,7 @@ export default function Home() {
               transition: "all 0.15s",
             }}
           >
-            Architecture
+            Introduction
           </Link>
         </div>
       </section>

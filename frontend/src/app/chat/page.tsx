@@ -509,24 +509,21 @@ export default function IntelPage() {
 
   const triggerVaderCall = useCallback(() => {
     if (vaderPopupVisible || vaderTimerRef.current) return;
-    // Activate voice + AudioContext NOW (in user gesture) so it's not suspended later
     activateVoiceIfNeeded();
     const { ctx } = ensureAudioCtx();
     if (ctx.state === 'suspended') ctx.resume();
     sfxIncomingCall();
-    // 3.5s suspense, then popup + Omni speaks
     vaderTimerRef.current = setTimeout(() => {
       vaderTimerRef.current = null;
       setVaderPopupVisible(true);
-      speak(
-        "Well, that's unexpected. Darth Vader himself is requesting exoplanet intelligence. I suppose even the Dark Side needs real estate options. Let me search the Milky Way before he force-chokes our servers."
-      );
     }, 3500);
-  }, [vaderPopupVisible, activateVoiceIfNeeded, ensureAudioCtx, speak]);
+  }, [vaderPopupVisible, activateVoiceIfNeeded, ensureAudioCtx]);
 
   const handleVaderAccept = useCallback(() => {
-    // Popup stays open (it transitions through message → video phases internally).
-    // Activate cyberpunk mode 10s after accepting
+    speak("Looks like a call from very far away. Let me see what's going on.");
+  }, [speak]);
+
+  const handleVaderVideoEnd = useCallback(() => {
     if (cyberTimerRef.current) clearTimeout(cyberTimerRef.current);
     if (themeKey !== 'cyberpunk') {
       cyberTimerRef.current = setTimeout(() => {
@@ -932,8 +929,9 @@ export default function IntelPage() {
       {/* Vader call popup */}
       <VaderCallPopup
         visible={vaderPopupVisible}
+        onAccept={handleVaderAccept}
         onDismiss={handleVaderDismiss}
-        onVideoEnd={() => { handleVaderAccept(); setVaderPopupVisible(false); }}
+        onVideoEnd={handleVaderVideoEnd}
       />
 
       {/* Watermark */}
