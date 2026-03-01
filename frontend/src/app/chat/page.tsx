@@ -516,12 +516,9 @@ export default function IntelPage() {
     vaderTimerRef.current = setTimeout(() => {
       vaderTimerRef.current = null;
       setVaderPopupVisible(true);
+      speak("Looks like a call from very far away. Let me see what's going on.");
     }, 3500);
-  }, [vaderPopupVisible, activateVoiceIfNeeded, ensureAudioCtx]);
-
-  const handleVaderAccept = useCallback(() => {
-    speak("Looks like a call from very far away. Let me see what's going on.");
-  }, [speak]);
+  }, [vaderPopupVisible, activateVoiceIfNeeded, ensureAudioCtx, speak]);
 
   const handleVaderVideoEnd = useCallback(() => {
     if (cyberTimerRef.current) clearTimeout(cyberTimerRef.current);
@@ -929,7 +926,7 @@ export default function IntelPage() {
       {/* Vader call popup */}
       <VaderCallPopup
         visible={vaderPopupVisible}
-        onAccept={handleVaderAccept}
+        onAccept={() => {}}
         onDismiss={handleVaderDismiss}
         onVideoEnd={handleVaderVideoEnd}
       />

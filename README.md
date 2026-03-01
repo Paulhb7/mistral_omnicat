@@ -2,6 +2,25 @@
 
 OSINT (Open Source Intelligence) analysis system for maritime, aerial, geopolitical and space weather surveillance, powered by Mistral AI agents.
 
+## ElevenLabs — Voice & Video
+
+### Custom Voice: "Omni"
+
+We used **ElevenLabs** to create a brand-new custom voice for OmniCAT, designed to closely resemble **Jarvis** from Iron Man. The voice — named "Omni" — is authoritative, calm, with a slight British inflection, perfectly suited for delivering intelligence briefings. It was built using ElevenLabs' voice design tools and runs on the `eleven_turbo_v2_5` model for minimum latency during live interactions.
+
+### Demo Video
+
+The project demo video was also produced using **ElevenLabs**, leveraging their text-to-speech capabilities for the voiceover narration, ensuring a consistent Jarvis-like experience throughout the presentation.
+
+### Demo Easter Eggs
+
+For the live demo, we added **two easter eggs** triggered by keyboard shortcuts to bring more fun and ensure smooth transitions between the different phases of the presentation:
+
+- **`Cmd+Shift+N`** — **NASA Incoming Call**: A full-screen popup simulating an incoming call from NASA with an asteroid mission briefing. Press Enter to accept and transition seamlessly to the asteroid tracking view.
+- **`Cmd+Shift+V`** — **Vader Incoming Call**: A full-screen popup simulating an incoming call from Darth Vader with a dark side exoplanet intelligence scenario. Press Enter to accept and jump to the exoplanet exploration view.
+
+These shortcuts allowed us to create theatrical, engaging transitions during the hackathon demo — instead of manually clicking through menus, a single keyboard shortcut triggers an immersive "incoming call" animation with sound effects, making each phase transition feel like a cinematic moment.
+
 ## Architecture
 
 ```
