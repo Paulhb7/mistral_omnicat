@@ -42,7 +42,8 @@ backend/
 frontend/
 ├── src/app/               # Next.js App Router pages
 │   ├── page.tsx           # Landing page with radar animation
-│   └── chat/page.tsx      # Main intelligence interface (voice loop, TTS/STT)
+│   ├── chat/page.tsx      # Main intelligence interface (voice loop, TTS/STT)
+│   └── about/page.tsx     # About / introduction page (voice demo, agent overview)
 ├── src/components/
 │   ├── omni-orb.tsx       # 3D voice-reactive particle orb (Three.js)
 │   ├── voice-orb-status.tsx # Orb + status display wrapper
@@ -205,4 +206,4 @@ Optional:
 - `ELEVENLABS_VOICE_ID` — Custom voice ID (default: `1aBfmKpXXPzK6xmSpeqn`, the "Omni" Jarvis-inspired voice)
 - `ORCHESTRATOR_MODEL_ID` — Override orchestrator model
 - `AGENT_MODEL_ID` — Override specialist agent model
-- `ACLED_API_KEY` / `ACLED_EMAIL` — ACLED conflict data access
+- `ACLED_USERNAME` / `ACLED_PASSWORD` — ACLED conflict data access

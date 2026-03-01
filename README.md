@@ -202,8 +202,8 @@ Open `http://localhost:3000` in your browser and enter a location or query.
 | `MISTRAL_API_KEY`         | Mistral API key (Voxtral STT) | *(required for voice mode)*          |
 | `ELEVENLABS_API_KEY`      | ElevenLabs API key (TTS) | *(required for voice mode)*                |
 | `ELEVENLABS_VOICE_ID`     | ElevenLabs voice ID      | `1aBfmKpXXPzK6xmSpeqn` (custom Omni voice)|
-| `ACLED_API_KEY`           | ACLED API key (optional) |                                            |
-| `ACLED_EMAIL`             | ACLED email (optional)   |                                            |
+| `ACLED_USERNAME`          | ACLED username (optional)|                                            |
+| `ACLED_PASSWORD`          | ACLED password (optional)|                                            |
 
 ## Tech Stack
 
@@ -300,7 +300,8 @@ frontend/
 │   ├── intel-panels.tsx     # Climate/earthquake/conflict panels
 │   ├── search-bar.tsx       # Search input + mic toggle
 │   ├── nasa-call-popup.tsx  # NASA incoming call easter egg
-│   └── vader-call-popup.tsx # Vader incoming call easter egg
+│   ├── vader-call-popup.tsx # Vader incoming call easter egg
+│   └── orange-globe.tsx     # Decorative wireframe globe (landing page)
 ├── src/hooks/       # Custom hooks (SSE streaming)
 ├── src/utils/sfx.ts # Jarvis-inspired HUD sound effects
 ├── src/context/     # Theme context (OmniCAT / Cyberpunk)
