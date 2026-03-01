@@ -29,9 +29,10 @@ export function JarvisLoader({ active, agentLabel }: JarvisLoaderProps) {
         height: size,
         position: 'relative',
         margin: '0 auto',
-        opacity: active ? 1 : 0,
-        transform: active ? 'scale(1)' : 'scale(0.7)',
-        transition: 'opacity 0.5s ease, transform 0.5s ease',
+        opacity: active ? 1 : 0.5,
+        transform: 'translateY(-40px)',
+        transition: 'opacity 0.5s ease',
+        filter: active ? 'none' : `drop-shadow(0 0 6px ${accent})`,
         pointerEvents: 'none',
       }}
     >
@@ -59,7 +60,7 @@ export function JarvisLoader({ active, agentLabel }: JarvisLoaderProps) {
         </defs>
 
         {/* ── Ring 1 — outer, thin, rotates clockwise slowly ── */}
-        <g style={{ transformOrigin: `${cx}px ${cx}px`, animation: active ? 'jarvis-spin 8s linear infinite' : 'none' }}>
+        <g style={{ transformOrigin: `${cx}px ${cx}px`, animation: `jarvis-spin ${active ? 8 : 60}s linear infinite` }}>
           <circle cx={cx} cy={cx} r={92} fill="none" stroke={accent} strokeWidth="0.5" strokeOpacity="0.2" />
           {/* Tick marks on outer ring */}
           {Array.from({ length: 36 }).map((_, i) => {
@@ -85,7 +86,7 @@ export function JarvisLoader({ active, agentLabel }: JarvisLoaderProps) {
         </g>
 
         {/* ── Ring 2 — counter-clockwise, dashed ── */}
-        <g style={{ transformOrigin: `${cx}px ${cx}px`, animation: active ? 'jarvis-spin-reverse 6s linear infinite' : 'none' }}>
+        <g style={{ transformOrigin: `${cx}px ${cx}px`, animation: `jarvis-spin-reverse ${active ? 6 : 45}s linear infinite` }}>
           <circle
             cx={cx} cy={cx} r={78}
             fill="none" stroke={accent} strokeWidth="0.7"
@@ -94,7 +95,7 @@ export function JarvisLoader({ active, agentLabel }: JarvisLoaderProps) {
         </g>
 
         {/* ── Ring 3 — inner, thicker, rotates clockwise ── */}
-        <g style={{ transformOrigin: `${cx}px ${cx}px`, animation: active ? 'jarvis-spin 4s linear infinite' : 'none' }}>
+        <g style={{ transformOrigin: `${cx}px ${cx}px`, animation: `jarvis-spin ${active ? 4 : 50}s linear infinite` }}>
           <circle cx={cx} cy={cx} r={62} fill="none" stroke={accent} strokeWidth="0.4" strokeOpacity="0.15" />
           {/* Short arc segments — the "scanning" feel */}
           <circle
@@ -126,7 +127,7 @@ export function JarvisLoader({ active, agentLabel }: JarvisLoaderProps) {
         </g>
 
         {/* ── Ring 4 — innermost, counter-clockwise, dotted ── */}
-        <g style={{ transformOrigin: `${cx}px ${cx}px`, animation: active ? 'jarvis-spin-reverse 3s linear infinite' : 'none' }}>
+        <g style={{ transformOrigin: `${cx}px ${cx}px`, animation: `jarvis-spin-reverse ${active ? 3 : 40}s linear infinite` }}>
           <circle
             cx={cx} cy={cx} r={46}
             fill="none" stroke={accent} strokeWidth="0.5"

@@ -793,27 +793,6 @@ export default function IntelPage() {
               <div style={{ fontSize: 8, color: theme.fgMuted, letterSpacing: 1 }}>
                 paris {'\u00b7'} california {'\u00b7'} tokyo {'\u00b7'} odessa
               </div>
-
-              {/* Quick action buttons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8, width: '100%', maxWidth: 260 }}>
-                {['Analyze Marseille', 'Strait of Gibraltar area', 'Situation in Odessa'].map(q => (
-                  <button
-                    key={q}
-                    onClick={() => { handleSearch(q); setInputVal(''); }}
-                    style={{
-                      background: 'transparent', border: `1px solid ${theme.border}`,
-                      color: theme.fgMuted, fontFamily: mono, fontSize: 9,
-                      letterSpacing: 2, padding: '8px 12px', cursor: 'pointer',
-                      textTransform: 'uppercase', textAlign: 'left',
-                      transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accentBorder; e.currentTarget.style.color = theme.accent; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.fgMuted; }}
-                  >
-                    {'\u2192'} {q}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
 
