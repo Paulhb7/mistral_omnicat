@@ -1,380 +1,442 @@
-import Link from "next/link";
+'use client';
+
+import { useState, useRef, useCallback, useEffect } from 'react';
+import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import { useChat } from '@/hooks/use-chat';
+import { useTheme } from '@/context/theme-context';
+import { sfxActivate, sfxDeactivate, sfxListening, sfxSubmit, sfxSpeakStart, sfxComplete } from '@/utils/sfx';
+
+const OmniOrb = dynamic(() => import('@/components/omni-orb').then(m => ({ default: m.OmniOrb })), { ssr: false });
 
 const mono = "'Roboto Mono', monospace";
 const sans = "'Plus Jakarta Sans', system-ui, sans-serif";
 
 const agents = [
-  { icon: "🚢", name: "Maritime", description: "Real-time vessel tracking, port traffic and AIS/MMSI data.", sources: ["AIS Stream"] },
-  { icon: "✈️", name: "Aviation", description: "Flight tracking, air traffic and aircraft identification via ICAO.", sources: ["OpenSky Network"] },
-  { icon: "💀", name: "Doomsday", description: "Natural hazards: earthquakes, climate events, volcanoes, floods, wildfires.", sources: ["NASA EONET", "USGS"] },
-  { icon: "⚔️", name: "Conflict", description: "Armed conflicts, geopolitics, protests and media monitoring.", sources: ["ACLED", "GDELT"] },
-  { icon: "☀️", name: "Solar System", description: "Solar flares, near-Earth objects (NEO) and space weather.", sources: ["NASA DONKI", "NASA NeoWs"] },
-  { icon: "🌌", name: "Milky Way", description: "Exoplanet research, habitability analysis and scientific papers.", sources: ["NASA Exoplanet Archive", "arXiv"] },
+  { icon: '🚢', name: 'Maritime', desc: 'Real-time vessel tracking & AIS data' },
+  { icon: '✈️', name: 'Aviation', desc: 'Flight tracking & aircraft identification' },
+  { icon: '💀', name: 'Doomsday', desc: 'Earthquakes, wildfires, storms & floods' },
+  { icon: '⚔️', name: 'Conflict', desc: 'Armed conflicts, protests & news intel' },
+  { icon: '☀️', name: 'Solar', desc: 'Solar flares & near-Earth objects' },
+  { icon: '🌌', name: 'Milky Way', desc: 'Exoplanet research & scientific papers' },
 ];
 
-const sharedTools = [
-  { name: "Geocoding", desc: "Location → GPS coordinates via Nominatim" },
-  { name: "Weather", desc: "Real-time conditions via Open-Meteo" },
+const steps = [
+  { n: '01', label: 'Query', desc: 'Speak or type' },
+  { n: '02', label: 'Route', desc: 'LLM selects agents' },
+  { n: '03', label: 'Tools', desc: 'Live API calls' },
+  { n: '04', label: 'Brief', desc: 'Streamed response' },
+  { n: '05', label: 'Voice', desc: 'Spoken aloud' },
 ];
 
-const SOURCES = [
-  { name: "Mistral AI", desc: "LLM orchestrator & specialist agents" },
-  { name: "AIS Stream", desc: "Real-time vessel tracking — AIS data" },
-  { name: "OpenSky Network", desc: "Live flight tracking — ICAO transponders" },
-  { name: "NASA EONET", desc: "Natural event tracker — fires, storms, floods" },
-  { name: "USGS", desc: "Earthquake feed — magnitude, depth, location" },
-  { name: "ACLED", desc: "Armed conflict data — events & fatalities" },
-  { name: "GDELT", desc: "Global news intelligence — articles, sentiment" },
-  { name: "NASA DONKI", desc: "Space weather — solar flares, class & timing" },
-  { name: "NASA NeoWs", desc: "Near-Earth objects — distance, velocity, hazard" },
-  { name: "NASA Exoplanet Archive", desc: "Confirmed exoplanets — mass, radius, habitability" },
-  { name: "arXiv", desc: "Scientific papers — astrophysics, planetary science" },
-  { name: "Nominatim", desc: "Geocoding — place name to coordinates" },
-  { name: "Open-Meteo", desc: "Open weather API — temp, wind, humidity" },
-  { name: "ElevenLabs", desc: "Text-to-speech — Omni voice, low-latency streaming" },
-  { name: "Mistral Voxtral", desc: "Speech-to-text — realtime transcription via WebSocket" },
+const sources = [
+  'Mistral AI', 'AIS Stream', 'OpenSky', 'NASA EONET', 'USGS',
+  'ACLED', 'GDELT', 'NASA DONKI', 'NASA NeoWs', 'Exoplanet Archive',
+  'arXiv', 'Nominatim', 'Open-Meteo', 'ElevenLabs', 'Voxtral', 'Perplexity',
 ];
-
-function Nav() {
-  return (
-    <nav style={{
-      position: "fixed", top: 0, left: 0, right: 0, zIndex: 80,
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "0 40px", height: 56,
-      background: "#111113",
-      borderBottom: "1px solid rgba(255,250,235,0.08)",
-      fontFamily: mono,
-    }}>
-      <Link href="/" style={{ fontSize: 12, fontWeight: 600, letterSpacing: 4, color: "#fa500f", textDecoration: "none" }}>
-        Omni<strong>CAT</strong>
-      </Link>
-      <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-        <Link href="/" style={{ fontSize: 11, letterSpacing: 2, color: "rgba(255,250,235,0.4)", textDecoration: "none", textTransform: "uppercase" }}>
-          Home
-        </Link>
-        <Link href="/about" style={{ fontSize: 11, letterSpacing: 2, color: "#fffaeb", textDecoration: "none", textTransform: "uppercase", borderBottom: "1px solid rgba(250,80,15,0.5)", paddingBottom: 2 }}>
-          About
-        </Link>
-        <Link href="/chat" style={{
-          display: "inline-flex", alignItems: "center", gap: 8,
-          padding: "7px 18px",
-          background: "#fa500f", color: "#111113",
-          fontSize: 11, fontWeight: 700, letterSpacing: 2,
-          textDecoration: "none", textTransform: "uppercase",
-        }}>
-          Launch →
-        </Link>
-      </div>
-    </nav>
-  );
-}
 
 export default function AboutPage() {
-  return (
-    <div style={{ minHeight: "100vh", background: "#111113", color: "#fffaeb", fontFamily: sans, position: "relative", overflow: "hidden" }}>
-      {/* Noise texture */}
-      <div
-        aria-hidden
-        style={{
-          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E")`,
-          backgroundRepeat: "repeat",
-        }}
-      />
+  const { theme } = useTheme();
+  const { send, briefing, isLoading } = useChat();
 
-      {/* Orange glow — top right */}
-      <div
-        aria-hidden
-        style={{
-          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-          background: "radial-gradient(ellipse 50% 35% at 85% 0%, rgba(250,80,15,0.10) 0%, transparent 60%)",
-        }}
-      />
+  // ── Voice state ──────────────────────────────────────────────────────────
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [statusText, setStatusText] = useState('TAP TO SPEAK');
 
-      {/* Floating scan line */}
-      <div
-        aria-hidden
-        style={{
-          position: "fixed", left: 0, right: 0, height: 1, zIndex: 0,
-          pointerEvents: "none",
-          background: "linear-gradient(90deg, transparent 0%, rgba(250,80,15,0.15) 50%, transparent 100%)",
-          animation: "scanline 8s linear infinite",
-        }}
-      />
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const sttWsRef = useRef<WebSocket | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const scriptNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const transcriptRef = useRef('');
+  const voiceModeRef = useRef(false);
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const handleSearchRef = useRef<(q: string) => void>(() => {});
+  const prevBriefingRef = useRef<string | null>(null);
 
-      {/* Grid dots background */}
-      <div
-        aria-hidden
-        style={{
-          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", opacity: 0.4,
-          backgroundImage: "radial-gradient(rgba(250,80,15,0.15) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }}
-      />
+  useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
 
-      <style>{`
-        @keyframes scanline {
-          0% { top: -2%; }
-          100% { top: 102%; }
+  // ── Audio context ──────────────────────────────────────────────────────
+  const ensureAudioCtx = useCallback(() => {
+    if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+    if (!analyserRef.current) {
+      analyserRef.current = audioCtxRef.current.createAnalyser();
+      analyserRef.current.fftSize = 256;
+    }
+    return { ctx: audioCtxRef.current, analyser: analyserRef.current };
+  }, []);
+
+  // ── Cleanup helpers ────────────────────────────────────────────────────
+  const stopMicAndWs = useCallback(() => {
+    if (scriptNodeRef.current) { scriptNodeRef.current.disconnect(); scriptNodeRef.current = null; }
+    if (micStreamRef.current) { micStreamRef.current.getTracks().forEach(t => t.stop()); micStreamRef.current = null; }
+    if (sttWsRef.current && sttWsRef.current.readyState <= WebSocket.OPEN) { sttWsRef.current.close(); sttWsRef.current = null; }
+  }, []);
+
+  const stopTts = useCallback(() => {
+    if (ttsAudioRef.current) { ttsAudioRef.current.pause(); ttsAudioRef.current.src = ''; ttsAudioRef.current = null; }
+  }, []);
+
+  // ── STT — realtime via Voxtral WebSocket ──────────────────────────────
+  const startListening = useCallback(async () => {
+    stopMicAndWs();
+    transcriptRef.current = '';
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true } });
+    } catch { return; }
+    micStreamRef.current = stream;
+
+    setIsListening(true);
+    setStatusText('LISTENING . . .');
+    sfxListening();
+
+    const ws = new WebSocket('ws://localhost:8000/ws/stt');
+    sttWsRef.current = ws;
+    let submitted = false;
+
+    const submitTranscript = () => {
+      if (submitted) return;
+      const text = transcriptRef.current.trim();
+      if (!text) {
+        submitted = true;
+        stopMicAndWs();
+        setIsListening(false);
+        if (voiceModeRef.current) setTimeout(() => { if (voiceModeRef.current) startListening(); }, 300);
+        return;
+      }
+      submitted = true;
+      sfxSubmit();
+      stopMicAndWs();
+      setIsListening(false);
+      setStatusText('THINKING . . .');
+      handleSearchRef.current(text);
+    };
+
+    ws.onopen = () => {
+      const ctx = new AudioContext({ sampleRate: 16000 });
+      const source = ctx.createMediaStreamSource(stream);
+      const processor = ctx.createScriptProcessor(4096, 1, 1);
+      let lastSpeechTime = Date.now();
+      let hasSpoken = false;
+
+      processor.onaudioprocess = (e) => {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        const float32 = e.inputBuffer.getChannelData(0);
+        let sum = 0;
+        for (let i = 0; i < float32.length; i++) sum += float32[i] * float32[i];
+        const rms = Math.sqrt(sum / float32.length);
+
+        if (rms > 0.015) { lastSpeechTime = Date.now(); hasSpoken = true; }
+        else if (hasSpoken && Date.now() - lastSpeechTime > 1500) { submitTranscript(); return; }
+
+        const int16 = new Int16Array(float32.length);
+        for (let i = 0; i < float32.length; i++) {
+          const s = Math.max(-1, Math.min(1, float32[i]));
+          int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
         }
-      `}</style>
+        ws.send(int16.buffer);
+      };
 
-      <Nav />
+      source.connect(processor);
+      processor.connect(ctx.destination);
+      scriptNodeRef.current = processor;
+    };
 
-      <main style={{ maxWidth: 900, margin: "0 auto", padding: "96px 32px 80px", position: "relative", zIndex: 10 }}>
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'text_delta') {
+        transcriptRef.current += msg.text;
+        setStatusText(`HEARD: ${transcriptRef.current.slice(-30)}`);
+      } else if (msg.type === 'done') { submitTranscript(); }
+      else if (msg.type === 'error') {
+        stopMicAndWs(); setIsListening(false); setStatusText('TAP TO SPEAK');
+        if (voiceModeRef.current) setTimeout(() => { if (voiceModeRef.current) startListening(); }, 1000);
+      }
+    };
 
-        {/* Header */}
-        <div style={{ marginBottom: 64 }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            padding: "4px 12px", marginBottom: 24,
-            border: "1px solid rgba(250,80,15,0.3)",
-            background: "rgba(250,80,15,0.06)",
-            fontSize: 10, letterSpacing: 3,
-            color: "#fa500f", fontFamily: mono,
-            textTransform: "uppercase",
+    ws.onerror = () => { stopMicAndWs(); setIsListening(false); setStatusText('TAP TO SPEAK'); };
+    ws.onclose = () => submitTranscript();
+  }, [stopMicAndWs]);
+
+  // ── TTS — speak via ElevenLabs ────────────────────────────────────────
+  const speak = useCallback(async (text: string) => {
+    if (!voiceModeRef.current || !text) return;
+    stopTts();
+
+    const { ctx, analyser } = ensureAudioCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
+
+    setIsSpeaking(true);
+    setStatusText('SPEAKING . . .');
+    sfxSpeakStart();
+
+    try {
+      const resp = await fetch('http://localhost:8000/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!resp.ok) throw new Error(`TTS ${resp.status}`);
+
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      ttsAudioRef.current = audio;
+
+      const source = ctx.createMediaElementSource(audio);
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+
+      audio.onended = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(url);
+        ttsAudioRef.current = null;
+        if (voiceModeRef.current) { setStatusText('LISTENING . . .'); startListening(); }
+        else setStatusText('TAP TO SPEAK');
+      };
+
+      audio.onerror = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(url);
+        ttsAudioRef.current = null;
+        setStatusText('TAP TO SPEAK');
+      };
+
+      await audio.play();
+    } catch {
+      setIsSpeaking(false);
+      if (voiceModeRef.current) { setStatusText('LISTENING . . .'); startListening(); }
+      else setStatusText('TAP TO SPEAK');
+    }
+  }, [ensureAudioCtx, startListening, stopTts]);
+
+  // ── Toggle voice mode ─────────────────────────────────────────────────
+  const toggleVoice = useCallback(() => {
+    if (voiceMode) {
+      sfxDeactivate();
+      setVoiceMode(false);
+      setIsListening(false);
+      setIsSpeaking(false);
+      stopTts();
+      stopMicAndWs();
+      setStatusText('TAP TO SPEAK');
+    } else {
+      sfxActivate();
+      setVoiceMode(true);
+      ensureAudioCtx();
+      startListening();
+    }
+  }, [voiceMode, ensureAudioCtx, startListening, stopMicAndWs, stopTts]);
+
+  // ── Send query to backend ─────────────────────────────────────────────
+  const handleSearch = useCallback(async (q: string) => {
+    await send(q.trim());
+  }, [send]);
+
+  useEffect(() => { handleSearchRef.current = handleSearch; }, [handleSearch]);
+
+  // ── Speak briefing when it arrives ────────────────────────────────────
+  useEffect(() => {
+    if (voiceMode && briefing && !isLoading && briefing !== prevBriefingRef.current) {
+      prevBriefingRef.current = briefing;
+      sfxComplete();
+      const clean = briefing.replace(/[#*_\[\]()>`|\\-]/g, '').replace(/\n+/g, '. ');
+      speak(clean);
+    }
+  }, [voiceMode, briefing, isLoading, speak]);
+
+  return (
+    <div style={{ minHeight: '100vh', background: theme.bg, color: theme.fg, fontFamily: sans, display: 'flex' }}>
+
+      {/* ── Left: Omni Voice Zone ───────────────────────────────────────── */}
+      <div style={{
+        width: '35%', minHeight: '100vh',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        borderRight: `1px solid ${theme.border}`,
+        position: 'relative',
+      }}>
+        {/* Subtle glow behind orb */}
+        <div aria-hidden style={{
+          position: 'absolute', width: 320, height: 320, borderRadius: '50%',
+          background: `radial-gradient(circle, ${theme.accent}15 0%, transparent 70%)`,
+          pointerEvents: 'none',
+        }} />
+
+        <OmniOrb isSpeaking={isSpeaking} analyser={analyserRef.current} />
+
+        {/* Status text */}
+        <div style={{
+          fontSize: 8, letterSpacing: 4, color: isSpeaking ? theme.accent : theme.fgMuted,
+          textTransform: 'uppercase', fontFamily: mono, marginTop: 8,
+          animation: isSpeaking || isListening ? 'pulse 1.2s ease-in-out infinite' : 'none',
+        }}>
+          {statusText}
+        </div>
+
+        {/* Mic button */}
+        <button
+          onClick={toggleVoice}
+          style={{
+            marginTop: 28, width: 56, height: 56, borderRadius: '50%',
+            background: voiceMode ? theme.accent : 'transparent',
+            border: `2px solid ${voiceMode ? theme.accent : theme.fgMuted}`,
+            color: voiceMode ? theme.bg : theme.fgMuted,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.3s ease',
+            boxShadow: voiceMode ? `0 0 20px ${theme.accent}60, 0 0 40px ${theme.accent}30` : 'none',
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="23" />
+            <line x1="8" y1="23" x2="16" y2="23" />
+          </svg>
+        </button>
+
+        <div style={{
+          fontSize: 7, letterSpacing: 3, color: theme.fgMuted, fontFamily: mono,
+          textTransform: 'uppercase', marginTop: 12,
+        }}>
+          Ask Omni
+        </div>
+      </div>
+
+      {/* ── Right: Slide Content ────────────────────────────────────────── */}
+      <div style={{
+        width: '65%', minHeight: '100vh',
+        display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        padding: '60px 64px',
+      }}>
+
+        {/* Nav links */}
+        <div style={{
+          position: 'fixed', top: 0, right: 0, padding: '18px 32px',
+          display: 'flex', alignItems: 'center', gap: 24, zIndex: 50,
+          fontFamily: mono,
+        }}>
+          <Link href="/" style={{ fontSize: 10, letterSpacing: 2, color: theme.fgMuted, textDecoration: 'none', textTransform: 'uppercase' }}>
+            Home
+          </Link>
+          <Link href="/chat" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '6px 16px',
+            background: theme.accent, color: theme.bg,
+            fontSize: 10, fontWeight: 700, letterSpacing: 2,
+            textDecoration: 'none', textTransform: 'uppercase',
           }}>
-            <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#fa500f", display: "inline-block", animation: "pulse 2s ease-in-out infinite" }} />
-            Architecture
+            Launch {'\u2192'}
+          </Link>
+        </div>
+
+        {/* Title */}
+        <div style={{ marginBottom: 48 }}>
+          <div style={{
+            fontSize: 10, letterSpacing: 4, color: theme.accent, fontFamily: mono,
+            textTransform: 'uppercase', marginBottom: 12,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: theme.accent, display: 'inline-block', animation: 'pulse 2s ease-in-out infinite' }} />
+            Multi-Agent OSINT Platform
           </div>
-          <h1 style={{ fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20 }}>
-            How it works
+          <h1 style={{
+            fontSize: 'clamp(36px, 4vw, 52px)', fontWeight: 700,
+            letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 14,
+          }}>
+            Omni<span style={{ color: theme.accent }}>CAT</span>
           </h1>
-          <p style={{ fontSize: 16, color: "rgba(255,250,235,0.5)", lineHeight: 1.8, maxWidth: 640 }}>
-            OmniCAT combines a Mistral AI agentic loop with real-time data APIs and a full voice interface.
-            Speak or type a query — the orchestrator selects specialist agents, calls live APIs in parallel,
-            then delivers a structured intelligence briefing you can read or listen to. Interrupt the agent
-            mid-sentence to steer the conversation, just like talking to Jarvis.
+          <p style={{ fontSize: 15, color: theme.fgDim, lineHeight: 1.7, maxWidth: 560 }}>
+            Speak or type a query — the orchestrator routes to specialist agents, calls live APIs,
+            and delivers a structured intelligence briefing you can read or listen to.
           </p>
         </div>
 
-        {/* Flow summary */}
+        {/* Flow steps */}
         <div style={{
-          display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 1, marginBottom: 64,
-          border: "1px solid rgba(255,250,235,0.08)",
-          background: "rgba(255,250,235,0.08)",
+          display: 'flex', gap: 2, marginBottom: 40,
         }}>
-          {[
-            { step: "01", label: "Query", desc: "Speak or type a location, threat, or question" },
-            { step: "02", label: "Routing", desc: "LLM orchestrator selects the relevant specialist agents" },
-            { step: "03", label: "Tools", desc: "Agents call live APIs: AIS, OpenSky, NASA, ACLED, arXiv…" },
-            { step: "04", label: "Briefing", desc: "OSINT briefing streamed in real-time via SSE" },
-            { step: "05", label: "Voice", desc: "Agent reads the briefing aloud — interrupt anytime to ask more" },
-          ].map(({ step, label, desc }) => (
-            <div key={step} style={{ padding: "20px 24px", background: "#111113" }}>
-              <div style={{ fontSize: 9, letterSpacing: 3, color: "#fa500f", fontFamily: mono, marginBottom: 8 }}>{step}</div>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>{label}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,250,235,0.4)", lineHeight: 1.6 }}>{desc}</div>
+          {steps.map(({ n, label, desc }) => (
+            <div key={n} style={{
+              flex: 1, padding: '14px 16px',
+              background: `${theme.fg}08`,
+              borderTop: `2px solid ${theme.accent}30`,
+            }}>
+              <div style={{ fontSize: 8, letterSpacing: 3, color: theme.accent, fontFamily: mono, marginBottom: 4 }}>{n}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>{label}</div>
+              <div style={{ fontSize: 11, color: theme.fgMuted }}>{desc}</div>
             </div>
           ))}
         </div>
 
-        {/* Agents */}
-        <div style={{ marginBottom: 64 }}>
+        {/* Agents grid */}
+        <div style={{ marginBottom: 40 }}>
           <div style={{
-            fontSize: 8, letterSpacing: 4, color: "rgba(255,250,235,0.35)",
-            fontFamily: mono, textTransform: "uppercase", marginBottom: 20,
-            display: "flex", alignItems: "center", gap: 12,
+            fontSize: 7, letterSpacing: 4, color: theme.fgMuted, fontFamily: mono,
+            textTransform: 'uppercase', marginBottom: 14,
+            display: 'flex', alignItems: 'center', gap: 10,
           }}>
-            Specialized agents
-            <div style={{ flex: 1, height: 1, background: "rgba(255,250,235,0.08)" }} />
+            Specialist agents
+            <div style={{ flex: 1, height: 1, background: `${theme.fg}10` }} />
           </div>
-          <div style={{
-            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 1,
-            border: "1px solid rgba(255,250,235,0.08)",
-            background: "rgba(255,250,235,0.08)",
-          }}>
-            {agents.map((agent) => (
-              <div key={agent.name} style={{ padding: "20px 24px", background: "#111113" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <span style={{ fontSize: 20 }}>{agent.icon}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: 1 }}>{agent.name}</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+            {agents.map(a => (
+              <div key={a.name} style={{
+                padding: '14px 18px', background: `${theme.fg}06`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 16 }}>{a.icon}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1 }}>{a.name}</span>
                 </div>
-                <p style={{ fontSize: 12, color: "rgba(255,250,235,0.4)", lineHeight: 1.6, marginBottom: 12 }}>
-                  {agent.description}
-                </p>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {agent.sources.map((src) => (
-                    <span key={src} style={{
-                      fontSize: 10, letterSpacing: 1, padding: "2px 8px",
-                      border: "1px solid rgba(250,80,15,0.2)",
-                      color: "#fa500f", fontFamily: mono,
-                      textTransform: "uppercase",
-                    }}>
-                      {src}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Shared tools */}
-        <div style={{ marginBottom: 64 }}>
-          <div style={{
-            fontSize: 8, letterSpacing: 4, color: "rgba(255,250,235,0.35)",
-            fontFamily: mono, textTransform: "uppercase", marginBottom: 20,
-            display: "flex", alignItems: "center", gap: 12,
-          }}>
-            Shared tools
-            <div style={{ flex: 1, height: 1, background: "rgba(255,250,235,0.08)" }} />
-          </div>
-          <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1,
-            border: "1px solid rgba(255,250,235,0.08)",
-            background: "rgba(255,250,235,0.08)",
-          }}>
-            {sharedTools.map((tool) => (
-              <div key={tool.name} style={{ padding: "16px 24px", background: "#111113" }}>
-                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: "#fa500f", fontFamily: mono, marginBottom: 4 }}>
-                  {tool.name}
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(255,250,235,0.4)" }}>{tool.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Voice interface */}
-        <div style={{ marginBottom: 64 }}>
-          <div style={{
-            fontSize: 8, letterSpacing: 4, color: "rgba(255,250,235,0.35)",
-            fontFamily: mono, textTransform: "uppercase", marginBottom: 20,
-            display: "flex", alignItems: "center", gap: 12,
-          }}>
-            Voice interface
-            <div style={{ flex: 1, height: 1, background: "rgba(255,250,235,0.08)" }} />
-          </div>
-          <div style={{
-            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 1,
-            border: "1px solid rgba(255,250,235,0.08)",
-            background: "rgba(255,250,235,0.08)",
-          }}>
-            {[
-              { label: "Speech-to-Text", desc: "Realtime transcription via Mistral Voxtral over WebSocket. PCM 16kHz mono with automatic silence detection." },
-              { label: "Text-to-Speech", desc: "ElevenLabs streaming with a custom Omni voice. The 3D OmniOrb reacts to audio frequencies in real-time." },
-              { label: "Barge-in", desc: "Interrupt the agent mid-sentence by speaking. Echo cancellation + RMS energy detection prevents false triggers." },
-              { label: "HUD Sound Effects", desc: "Jarvis-inspired synthesized tones via WebAudio API. Spatial slapback delay, stereo detuning, filtered noise." },
-            ].map(({ label, desc }) => (
-              <div key={label} style={{ padding: "20px 24px", background: "#111113" }}>
-                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: "#fa500f", fontFamily: mono, marginBottom: 6 }}>
-                  {label}
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(255,250,235,0.4)", lineHeight: 1.6 }}>{desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Visualizations */}
-        <div style={{ marginBottom: 64 }}>
-          <div style={{
-            fontSize: 8, letterSpacing: 4, color: "rgba(255,250,235,0.35)",
-            fontFamily: mono, textTransform: "uppercase", marginBottom: 20,
-            display: "flex", alignItems: "center", gap: 12,
-          }}>
-            Visualizations
-            <div style={{ flex: 1, height: 1, background: "rgba(255,250,235,0.08)" }} />
-          </div>
-          <div style={{
-            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 1,
-            border: "1px solid rgba(255,250,235,0.08)",
-            background: "rgba(255,250,235,0.08)",
-          }}>
-            {[
-              { label: "OmniOrb", desc: "Three.js particle sphere (2800 + 700 halo particles) that deforms to audio frequencies. Fibonacci distribution, dual color themes." },
-              { label: "NASA Eyes — Solar System", desc: "Embedded 3D viewer with direct navigation to planets, moons, and spacecraft like JWST or Voyager." },
-              { label: "NASA Eyes — Exoplanets", desc: "Fly to confirmed exoplanet systems: TRAPPIST-1, Proxima Centauri, Kepler and more." },
-              { label: "Earth Map", desc: "Leaflet map with pulsing markers for climate events, earthquakes and armed conflicts. Dark theme with color-coded categories." },
-              { label: "Cyberpunk Theme", desc: "Neon cyan + magenta alternate theme with scanline overlay, glow effects, and flicker animations. Toggle with Ctrl+Shift+X." },
-            ].map(({ label, desc }) => (
-              <div key={label} style={{ padding: "20px 24px", background: "#111113" }}>
-                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: "#fa500f", fontFamily: mono, marginBottom: 6 }}>
-                  {label}
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(255,250,235,0.4)", lineHeight: 1.6 }}>{desc}</div>
+                <div style={{ fontSize: 11, color: theme.fgMuted, lineHeight: 1.5 }}>{a.desc}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* Data sources */}
-        <div style={{ marginBottom: 64 }}>
+        <div style={{ marginBottom: 40 }}>
           <div style={{
-            fontSize: 8, letterSpacing: 4, color: "rgba(255,250,235,0.35)",
-            fontFamily: mono, textTransform: "uppercase", marginBottom: 20,
-            display: "flex", alignItems: "center", gap: 12,
+            fontSize: 7, letterSpacing: 4, color: theme.fgMuted, fontFamily: mono,
+            textTransform: 'uppercase', marginBottom: 12,
+            display: 'flex', alignItems: 'center', gap: 10,
           }}>
             Data sources
-            <div style={{ flex: 1, height: 1, background: "rgba(255,250,235,0.08)" }} />
+            <div style={{ flex: 1, height: 1, background: `${theme.fg}10` }} />
           </div>
-          <div style={{
-            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 1,
-            border: "1px solid rgba(255,250,235,0.08)",
-            background: "rgba(255,250,235,0.08)",
-          }}>
-            {SOURCES.map(({ name, desc }) => (
-              <div key={name} style={{ padding: "16px 20px", background: "#111113", transition: "background 0.15s" }}>
-                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: "#fa500f", fontFamily: mono, marginBottom: 6 }}>
-                  {name}
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(255,250,235,0.4)", lineHeight: 1.6 }}>{desc}</div>
-              </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {sources.map(s => (
+              <span key={s} style={{
+                fontSize: 9, letterSpacing: 1, padding: '3px 10px',
+                border: `1px solid ${theme.accent}25`,
+                color: theme.accent, fontFamily: mono,
+                textTransform: 'uppercase',
+              }}>
+                {s}
+              </span>
             ))}
           </div>
         </div>
 
-        {/* Tech stack */}
-        <div style={{ marginBottom: 64 }}>
-          <div style={{
-            fontSize: 8, letterSpacing: 4, color: "rgba(255,250,235,0.35)",
-            fontFamily: mono, textTransform: "uppercase", marginBottom: 20,
-            display: "flex", alignItems: "center", gap: 12,
-          }}>
-            Tech stack
-            <div style={{ flex: 1, height: 1, background: "rgba(255,250,235,0.08)" }} />
-          </div>
-          <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1,
-            border: "1px solid rgba(255,250,235,0.08)",
-            background: "rgba(255,250,235,0.08)",
-          }}>
-            {[
-              { label: "LLM", value: "Mistral Large + Ministral (AWS Bedrock)" },
-              { label: "Agent framework", value: "Strands Agents" },
-              { label: "Voice", value: "Voxtral STT + ElevenLabs TTS" },
-              { label: "Backend", value: "FastAPI + SSE + WebSocket" },
-              { label: "Frontend", value: "Next.js 15 + React 19" },
-              { label: "3D / Maps", value: "Three.js (OmniOrb) + Leaflet" },
-            ].map(({ label, value }) => (
-              <div key={label} style={{ padding: "16px 24px", background: "#111113" }}>
-                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: "#fffaeb", fontFamily: mono, marginBottom: 4 }}>
-                  {label}
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(255,250,235,0.4)" }}>{value}</div>
-              </div>
-            ))}
-          </div>
+        {/* Tech stack — single line */}
+        <div style={{
+          fontSize: 11, color: theme.fgMuted, fontFamily: mono, letterSpacing: 1,
+        }}>
+          Mistral Large {'\u00b7'} Strands Agents {'\u00b7'} Voxtral STT {'\u00b7'} ElevenLabs TTS {'\u00b7'} FastAPI {'\u00b7'} Next.js 15 {'\u00b7'} Three.js
         </div>
 
-        {/* Footer CTA */}
-        <div style={{ textAlign: "center" }}>
-          <Link href="/chat" style={{
-            display: "inline-flex", alignItems: "center", gap: 10,
-            padding: "14px 32px",
-            background: "#fa500f", color: "#111113",
-            fontWeight: 700, fontSize: 14, letterSpacing: "0.02em",
-            textDecoration: "none", fontFamily: sans,
-            transition: "opacity 0.15s",
-          }}>
-            Launch briefing
-            <span style={{ fontFamily: mono, fontSize: 16 }}>→</span>
-          </Link>
+        {/* Watermark */}
+        <div style={{
+          position: 'fixed', bottom: 14, right: 24,
+          fontSize: 7, letterSpacing: 3, color: theme.fgMuted,
+          fontFamily: mono, textTransform: 'uppercase',
+        }}>
+          OmniCAT {'\u00b7'} 2026
         </div>
-
-      </main>
+      </div>
     </div>
   );
 }
