@@ -9,6 +9,7 @@ const agents = [
   { icon: "💀", name: "Doomsday", description: "Natural hazards: earthquakes, climate events, volcanoes, floods, wildfires.", sources: ["NASA EONET", "USGS"] },
   { icon: "⚔️", name: "Conflict", description: "Armed conflicts, geopolitics, protests and media monitoring.", sources: ["ACLED", "GDELT"] },
   { icon: "☀️", name: "Solar System", description: "Solar flares, near-Earth objects (NEO) and space weather.", sources: ["NASA DONKI", "NASA NeoWs"] },
+  { icon: "🌌", name: "Milky Way", description: "Exoplanet research, habitability analysis and scientific papers.", sources: ["NASA Exoplanet Archive", "arXiv"] },
 ];
 
 const sharedTools = [
@@ -26,8 +27,12 @@ const SOURCES = [
   { name: "GDELT", desc: "Global news intelligence — articles, sentiment" },
   { name: "NASA DONKI", desc: "Space weather — solar flares, class & timing" },
   { name: "NASA NeoWs", desc: "Near-Earth objects — distance, velocity, hazard" },
+  { name: "NASA Exoplanet Archive", desc: "Confirmed exoplanets — mass, radius, habitability" },
+  { name: "arXiv", desc: "Scientific papers — astrophysics, planetary science" },
   { name: "Nominatim", desc: "Geocoding — place name to coordinates" },
   { name: "Open-Meteo", desc: "Open weather API — temp, wind, humidity" },
+  { name: "ElevenLabs", desc: "Text-to-speech — Omni voice, low-latency streaming" },
+  { name: "Mistral Voxtral", desc: "Speech-to-text — realtime transcription via WebSocket" },
 ];
 
 function Nav() {
@@ -136,9 +141,10 @@ export default function AboutPage() {
             How it works
           </h1>
           <p style={{ fontSize: 16, color: "rgba(255,250,235,0.5)", lineHeight: 1.8, maxWidth: 640 }}>
-            OmniCAT combines a Mistral AI agentic loop with real-time data APIs.
-            When you enter a location, the orchestrator automatically selects and calls
-            the relevant agents in parallel, then synthesises the results into a structured intelligence brief.
+            OmniCAT combines a Mistral AI agentic loop with real-time data APIs and a full voice interface.
+            Speak or type a query — the orchestrator selects specialist agents, calls live APIs in parallel,
+            then delivers a structured intelligence briefing you can read or listen to. Interrupt the agent
+            mid-sentence to steer the conversation, just like talking to Jarvis.
           </p>
         </div>
 
@@ -150,10 +156,11 @@ export default function AboutPage() {
           background: "rgba(255,250,235,0.08)",
         }}>
           {[
-            { step: "01", label: "Query", desc: "User types a location or area of interest" },
+            { step: "01", label: "Query", desc: "Speak or type a location, threat, or question" },
             { step: "02", label: "Routing", desc: "LLM orchestrator selects the relevant specialist agents" },
-            { step: "03", label: "Tools", desc: "Agents call live APIs: AIS, OpenSky, NASA, ACLED, GDELT…" },
-            { step: "04", label: "Stream", desc: "Structured OSINT briefing streamed in real-time via SSE" },
+            { step: "03", label: "Tools", desc: "Agents call live APIs: AIS, OpenSky, NASA, ACLED, arXiv…" },
+            { step: "04", label: "Briefing", desc: "OSINT briefing streamed in real-time via SSE" },
+            { step: "05", label: "Voice", desc: "Agent reads the briefing aloud — interrupt anytime to ask more" },
           ].map(({ step, label, desc }) => (
             <div key={step} style={{ padding: "20px 24px", background: "#111113" }}>
               <div style={{ fontSize: 9, letterSpacing: 3, color: "#fa500f", fontFamily: mono, marginBottom: 8 }}>{step}</div>
@@ -230,6 +237,69 @@ export default function AboutPage() {
           </div>
         </div>
 
+        {/* Voice interface */}
+        <div style={{ marginBottom: 64 }}>
+          <div style={{
+            fontSize: 8, letterSpacing: 4, color: "rgba(255,250,235,0.35)",
+            fontFamily: mono, textTransform: "uppercase", marginBottom: 20,
+            display: "flex", alignItems: "center", gap: 12,
+          }}>
+            Voice interface
+            <div style={{ flex: 1, height: 1, background: "rgba(255,250,235,0.08)" }} />
+          </div>
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 1,
+            border: "1px solid rgba(255,250,235,0.08)",
+            background: "rgba(255,250,235,0.08)",
+          }}>
+            {[
+              { label: "Speech-to-Text", desc: "Realtime transcription via Mistral Voxtral over WebSocket. PCM 16kHz mono with automatic silence detection." },
+              { label: "Text-to-Speech", desc: "ElevenLabs streaming with a custom Omni voice. The 3D OmniOrb reacts to audio frequencies in real-time." },
+              { label: "Barge-in", desc: "Interrupt the agent mid-sentence by speaking. Echo cancellation + RMS energy detection prevents false triggers." },
+              { label: "HUD Sound Effects", desc: "Jarvis-inspired synthesized tones via WebAudio API. Spatial slapback delay, stereo detuning, filtered noise." },
+            ].map(({ label, desc }) => (
+              <div key={label} style={{ padding: "20px 24px", background: "#111113" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: "#fa500f", fontFamily: mono, marginBottom: 6 }}>
+                  {label}
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,250,235,0.4)", lineHeight: 1.6 }}>{desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Visualizations */}
+        <div style={{ marginBottom: 64 }}>
+          <div style={{
+            fontSize: 8, letterSpacing: 4, color: "rgba(255,250,235,0.35)",
+            fontFamily: mono, textTransform: "uppercase", marginBottom: 20,
+            display: "flex", alignItems: "center", gap: 12,
+          }}>
+            Visualizations
+            <div style={{ flex: 1, height: 1, background: "rgba(255,250,235,0.08)" }} />
+          </div>
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 1,
+            border: "1px solid rgba(255,250,235,0.08)",
+            background: "rgba(255,250,235,0.08)",
+          }}>
+            {[
+              { label: "OmniOrb", desc: "Three.js particle sphere (2800 + 700 halo particles) that deforms to audio frequencies. Fibonacci distribution, dual color themes." },
+              { label: "NASA Eyes — Solar System", desc: "Embedded 3D viewer with direct navigation to planets, moons, and spacecraft like JWST or Voyager." },
+              { label: "NASA Eyes — Exoplanets", desc: "Fly to confirmed exoplanet systems: TRAPPIST-1, Proxima Centauri, Kepler and more." },
+              { label: "Earth Map", desc: "Leaflet map with pulsing markers for climate events, earthquakes and armed conflicts. Dark theme with color-coded categories." },
+              { label: "Cyberpunk Theme", desc: "Neon cyan + magenta alternate theme with scanline overlay, glow effects, and flicker animations. Toggle with Ctrl+Shift+X." },
+            ].map(({ label, desc }) => (
+              <div key={label} style={{ padding: "20px 24px", background: "#111113" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: "#fa500f", fontFamily: mono, marginBottom: 6 }}>
+                  {label}
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,250,235,0.4)", lineHeight: 1.6 }}>{desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Data sources */}
         <div style={{ marginBottom: 64 }}>
           <div style={{
@@ -272,10 +342,12 @@ export default function AboutPage() {
             background: "rgba(255,250,235,0.08)",
           }}>
             {[
-              { label: "LLM", value: "Mistral via AWS Bedrock" },
+              { label: "LLM", value: "Mistral Large + Ministral (AWS Bedrock)" },
               { label: "Agent framework", value: "Strands Agents" },
-              { label: "Backend", value: "FastAPI + SSE streaming" },
-              { label: "Frontend", value: "Next.js 15 + Tailwind 4" },
+              { label: "Voice", value: "Voxtral STT + ElevenLabs TTS" },
+              { label: "Backend", value: "FastAPI + SSE + WebSocket" },
+              { label: "Frontend", value: "Next.js 15 + React 19" },
+              { label: "3D / Maps", value: "Three.js (OmniOrb) + Leaflet" },
             ].map(({ label, value }) => (
               <div key={label} style={{ padding: "16px 24px", background: "#111113" }}>
                 <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: "#fffaeb", fontFamily: mono, marginBottom: 4 }}>
