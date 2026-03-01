@@ -82,6 +82,21 @@ function detectAsteroid(q: string): boolean {
   return ASTEROID_KW.some(kw => low.includes(kw));
 }
 
+// ── Milky Way / Exoplanet keyword detection ─────────────────────────────────
+
+const MILKY_WAY_KW = [
+  'milky-way', 'milky way', 'milkyway',
+  'voie lactée', 'voie lactee',
+  'exoplanet', 'exoplanets', 'exoplanète', 'exoplanètes',
+  'trappist', 'kepler', 'proxima centauri', 'toi-700', 'k2-18',
+  'wasp-39', '55 cancri', 'hd 209458',
+];
+
+function detectMilkyWay(q: string): boolean {
+  const low = q.toLowerCase();
+  return MILKY_WAY_KW.some(kw => low.includes(kw));
+}
+
 const TOOL_LABELS: Record<string, string> = {
   geocode_location:       'GEOCODE \u00b7 location',
   get_weather:            'OPEN-METEO \u00b7 weather',
@@ -568,15 +583,22 @@ export default function IntelPage() {
     setStatusText('ROUTING . . .');
     setBriefingVisible(false);
 
+    // Detect milky-way / exoplanet → switch to Eyes on Exoplanets
+    const isMilkyWay = detectMilkyWay(text);
+    if (isMilkyWay) {
+      setMapAgent('exo');
+      setModeText('MILKY WAY · EXOPLANETS');
+    }
+
     // Detect asteroid / NEO → switch to Eyes on Asteroids
-    const isAsteroid = detectAsteroid(text);
+    const isAsteroid = !isMilkyWay && detectAsteroid(text);
     if (isAsteroid) {
       setMapAgent('asteroids');
       setModeText('ASTEROIDS · NEAR-EARTH OBJECTS');
     }
 
     // Detect celestial body — fly directly to planet, moon, or spacecraft
-    if (!isAsteroid) {
+    if (!isMilkyWay && !isAsteroid) {
       const target = detectCelestial(text);
       if (target) {
         setMapAgent('solar');

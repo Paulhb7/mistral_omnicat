@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { useChat } from '@/hooks/use-chat';
 import { useTheme } from '@/context/theme-context';
 import { sfxActivate, sfxDeactivate, sfxListening, sfxSubmit, sfxSpeakStart, sfxComplete } from '@/utils/sfx';
+import OrangeGlobe from '@/components/orange-globe';
 
 const OmniOrb = dynamic(() => import('@/components/omni-orb').then(m => ({ default: m.OmniOrb })), { ssr: false });
 
@@ -310,6 +311,16 @@ export default function Home() {
         position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
         background: `radial-gradient(ellipse 60% 40% at 10% 0%, ${theme.glow} 0%, transparent 60%)`,
       }} />
+
+      {/* Wireframe globe — decorative, right side */}
+      <div aria-hidden style={{
+        position: 'fixed', zIndex: 1, pointerEvents: 'none',
+        right: '-5vw', top: '50%', transform: 'translateY(-50%)',
+        transition: 'opacity 0.8s ease',
+        opacity: currentSlide <= 1 ? 1 : 0,
+      }}>
+        <OrangeGlobe size={680} opacity={0.22} />
+      </div>
 
       {/* ── Navigation dots ─────────────────────────────────────────────── */}
       <div style={{
