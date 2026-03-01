@@ -13,7 +13,7 @@ import { MicWaveform } from '@/components/mic-waveform';
 import { JarvisLoader } from '@/components/jarvis-loader';
 import { NasaCallPopup } from '@/components/nasa-call-popup';
 import { VaderCallPopup } from '@/components/vader-call-popup';
-import { sfxActivate, sfxDeactivate, sfxListening, sfxSubmit, sfxSpeakStart, sfxComplete, sfxIncomingCall } from '@/utils/sfx';
+import { sfxActivate, sfxDeactivate, sfxListening, sfxSubmit, sfxSpeakStart, sfxComplete, sfxIncomingCall, sfxBargeIn } from '@/utils/sfx';
 
 const EarthMap = dynamic(() => import('@/components/earth-map'), { ssr: false });
 
@@ -29,7 +29,11 @@ const UI_Q =
 const SOLAR_URL = 'https://eyes.nasa.gov/apps/solar-system/';
 const SOLAR_DEFAULT = `${SOLAR_URL}#/earth${UI_Q}`;
 
-type MapView = 'earth' | 'solar' | null;
+// NASA Eyes on Exoplanets
+const EXO_URL = 'https://eyes.nasa.gov/apps/exo/';
+const EXO_DEFAULT = `${EXO_URL}#/?embed=true`;
+
+type MapView = 'earth' | 'solar' | 'exo' | null;
 
 // ── Celestial body detection ─────────────────────────────────────────────────
 // keyword → NASA Eyes hash route (planets, moons, spacecraft)
@@ -58,6 +62,72 @@ function detectCelestial(q: string): { id: string; label: string } | null {
   const low = q.toLowerCase();
   for (const [kw, id] of CELESTIAL) {
     if (low.includes(kw)) return { id, label: kw.toUpperCase() };
+  }
+  return null;
+}
+
+// ── Exoplanet detection → NASA Eyes on Exoplanets ──────────────────────────
+// Each entry: [keyword, exact Eyes route ID, display label, type]
+// Route IDs verified against the NASA Eyes on Exoplanets JS bundle.
+
+const EXOPLANETS: [string, string, string, 'planet' | 'system'][] = [
+  // TRAPPIST-1
+  ['trappist-1e',   'TRAPPIST-1_e',               'TRAPPIST-1 E',       'planet'],
+  ['trappist-1 e',  'TRAPPIST-1_e',               'TRAPPIST-1 E',       'planet'],
+  ['trappist-1d',   'TRAPPIST-1_d',               'TRAPPIST-1 D',       'planet'],
+  ['trappist-1 d',  'TRAPPIST-1_d',               'TRAPPIST-1 D',       'planet'],
+  ['trappist-1b',   'TRAPPIST-1_b',               'TRAPPIST-1 B',       'planet'],
+  ['trappist-1 b',  'TRAPPIST-1_b',               'TRAPPIST-1 B',       'planet'],
+  ['trappist-1f',   'TRAPPIST-1_f',               'TRAPPIST-1 F',       'planet'],
+  ['trappist-1 f',  'TRAPPIST-1_f',               'TRAPPIST-1 F',       'planet'],
+  ['trappist-1',    'TRAPPIST-1',                  'TRAPPIST-1',         'system'],
+  ['trappist',      'TRAPPIST-1',                  'TRAPPIST-1',         'system'],
+  // Kepler
+  ['kepler-442b',   'Kepler-442_b',                'KEPLER-442 B',       'planet'],
+  ['kepler-442 b',  'Kepler-442_b',                'KEPLER-442 B',       'planet'],
+  ['kepler-442',    'Kepler-442',                   'KEPLER-442',         'system'],
+  ['kepler-186f',   'Kepler-186_f',                'KEPLER-186 F',       'planet'],
+  ['kepler-186 f',  'Kepler-186_f',                'KEPLER-186 F',       'planet'],
+  ['kepler-186',    'Kepler-186',                   'KEPLER-186',         'system'],
+  ['kepler-22b',    'Kepler-22_b',                 'KEPLER-22 B',        'planet'],
+  ['kepler-22 b',   'Kepler-22_b',                 'KEPLER-22 B',        'planet'],
+  ['kepler-22',     'Kepler-22',                    'KEPLER-22',          'system'],
+  ['kepler-452b',   'Kepler-452_b',                'KEPLER-452 B',       'planet'],
+  ['kepler-452 b',  'Kepler-452_b',                'KEPLER-452 B',       'planet'],
+  ['kepler-452',    'Kepler-452',                   'KEPLER-452',         'system'],
+  // Proxima Centauri — Eyes uses full name with spaces (URL-encoded)
+  ['proxima centauri b', 'Proxima%20Centauri%20b',  'PROXIMA CENTAURI B', 'planet'],
+  ['proxima cen b',      'Proxima%20Centauri%20b',  'PROXIMA CENTAURI B', 'planet'],
+  ['proxima b',          'Proxima%20Centauri%20b',  'PROXIMA CENTAURI B', 'planet'],
+  ['proxima centauri',   'Proxima%20Centauri',      'PROXIMA CENTAURI',   'system'],
+  ['proxima cen',        'Proxima%20Centauri',      'PROXIMA CENTAURI',   'system'],
+  // Others — verified IDs from bundle
+  ['toi-700 d',     'TOI-700_d',                   'TOI-700 D',          'planet'],
+  ['toi-700',       'TOI-700',                      'TOI-700',            'system'],
+  ['55 cancri e',   '55_Cnc_e',                    '55 CANCRI E',        'planet'],
+  ['55 cnc e',      '55_Cnc_e',                    '55 CANCRI E',        'planet'],
+  ['55 cancri',     '55_Cnc',                       '55 CANCRI',          'system'],
+  ['hd 189733 b',   'HD_189733_b',                 'HD 189733 B',        'planet'],
+  ['hd 189733',     'HD_189733',                    'HD 189733',          'system'],
+  ['hd 209458 b',   'HD_209458_b',                 'HD 209458 B',        'planet'],
+  ['hd 209458',     'HD_209458',                    'HD 209458',          'system'],
+  ['wasp-39 b',     'WASP-39_b',                   'WASP-39 B',          'planet'],
+  ['wasp-39b',      'WASP-39_b',                   'WASP-39 B',          'planet'],
+  ['wasp-39',       'WASP-39',                      'WASP-39',            'system'],
+  ['wasp-121 b',    'WASP-121_b',                  'WASP-121 B',         'planet'],
+  ['wasp-121b',     'WASP-121_b',                  'WASP-121 B',         'planet'],
+  ['wasp-121',      'WASP-121',                     'WASP-121',           'system'],
+  ['k2-18b',        'K2-18_b',                     'K2-18 B',            'planet'],
+  ['k2-18 b',       'K2-18_b',                     'K2-18 B',            'planet'],
+  ['k2-18',         'K2-18',                        'K2-18',              'system'],
+  ['51 pegasi b',   '51%20Pegasi%20b',             '51 PEGASI B',        'planet'],
+  ['51 pegasi',     '51%20Pegasi',                  '51 PEGASI',          'system'],
+];
+
+function detectExoplanet(q: string): { route: string; label: string; type: 'planet' | 'system' } | null {
+  const low = q.toLowerCase();
+  for (const [kw, route, label, type] of EXOPLANETS) {
+    if (low.includes(kw)) return { route, label, type };
   }
   return null;
 }
@@ -110,8 +180,16 @@ export default function IntelPage() {
   const micAnalyserRef = useRef<AnalyserNode | null>(null);
   const handleSearchRef = useRef<(q: string) => void>(() => {});
 
+  // ── Barge-in state ────────────────────────────────────────────────────────
+  const bargeInStreamRef    = useRef<MediaStream | null>(null);
+  const bargeInProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const bargeInCtxRef       = useRef<AudioContext | null>(null);
+  const isBargeInMonitoringRef = useRef(false);
+  const handleBargeInRef    = useRef<() => void>(() => {});
+
   const inpRef = useRef<HTMLInputElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const exoIframeRef = useRef<HTMLIFrameElement>(null);
 
   const { send, reset, isLoading, briefing, location, tools, panelData, error, agentMode } = useChat();
   const { theme, themeKey, toggle: toggleTheme } = useTheme();
@@ -143,10 +221,20 @@ export default function IntelPage() {
     micAnalyserRef.current = null;
   }, []);
 
+  // ── Helper: stop barge-in monitor cleanly ───────────────────────────────
+
+  const stopBargeInMonitor = useCallback(() => {
+    isBargeInMonitoringRef.current = false;
+    if (bargeInProcessorRef.current) { bargeInProcessorRef.current.disconnect(); bargeInProcessorRef.current = null; }
+    if (bargeInStreamRef.current) { bargeInStreamRef.current.getTracks().forEach(t => t.stop()); bargeInStreamRef.current = null; }
+    if (bargeInCtxRef.current) { bargeInCtxRef.current.close(); bargeInCtxRef.current = null; }
+  }, []);
+
   // ── STT — realtime via Voxtral WebSocket (PCM s16le 16kHz) ──────────────
 
   const startListening = useCallback(async () => {
     stopMicAndWs();
+    stopBargeInMonitor();
     transcriptRef.current = '';
 
     let stream: MediaStream;
@@ -180,7 +268,14 @@ export default function IntelPage() {
     const submitTranscript = () => {
       if (submitted) return;
       const text = transcriptRef.current.trim();
-      if (!text) return;
+      if (!text) {
+        // No speech detected — clean up and restart listening if in voice mode
+        submitted = true;
+        stopMicAndWs();
+        setIsListening(false);
+        if (voiceModeRef.current) setTimeout(() => { if (voiceModeRef.current) startListening(); }, 300);
+        return;
+      }
       submitted = true;
       sfxSubmit();
       stopMicAndWs();
@@ -258,7 +353,7 @@ export default function IntelPage() {
     };
 
     ws.onclose = () => submitTranscript();
-  }, [stopMicAndWs]);
+  }, [stopMicAndWs, stopBargeInMonitor]);
 
   // ── TTS — speak text aloud via ElevenLabs ────────────────────────────────
 
@@ -270,9 +365,75 @@ export default function IntelPage() {
     }
   }, []);
 
+  // ── Barge-in: handle user interruption during TTS ─────────────────────
+
+  const handleBargeIn = useCallback(() => {
+    stopBargeInMonitor();
+    stopTts();
+    setIsSpeaking(false);
+    sfxBargeIn();
+    setStatusText('INTERRUPTED · LISTENING . . .');
+    startListening();
+  }, [stopBargeInMonitor, stopTts, startListening]);
+
+  useEffect(() => { handleBargeInRef.current = handleBargeIn; }, [handleBargeIn]);
+
+  // ── Barge-in monitor: mic open during TTS, detect user speech ─────────
+
+  const startBargeInMonitor = useCallback(async () => {
+    if (!voiceModeRef.current) return;
+    stopBargeInMonitor();
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true } });
+    } catch {
+      return;
+    }
+    bargeInStreamRef.current = stream;
+
+    const biCtx = new AudioContext({ sampleRate: 16000 });
+    bargeInCtxRef.current = biCtx;
+    const source = biCtx.createMediaStreamSource(stream);
+    const processor = biCtx.createScriptProcessor(4096, 1, 1);
+
+    const BARGE_IN_RMS_THRESHOLD = 0.04;
+    const BARGE_IN_CONSECUTIVE_FRAMES = 3;
+    const BARGE_IN_COOLDOWN_MS = 500;
+    const ttsStartTime = Date.now();
+    let consecutiveAboveThreshold = 0;
+
+    isBargeInMonitoringRef.current = true;
+
+    processor.onaudioprocess = (e) => {
+      if (!isBargeInMonitoringRef.current) return;
+
+      const float32 = e.inputBuffer.getChannelData(0);
+      let sum = 0;
+      for (let i = 0; i < float32.length; i++) sum += float32[i] * float32[i];
+      const rms = Math.sqrt(sum / float32.length);
+
+      if (Date.now() - ttsStartTime < BARGE_IN_COOLDOWN_MS) return;
+
+      if (rms > BARGE_IN_RMS_THRESHOLD) {
+        consecutiveAboveThreshold++;
+        if (consecutiveAboveThreshold >= BARGE_IN_CONSECUTIVE_FRAMES) {
+          handleBargeInRef.current();
+        }
+      } else {
+        consecutiveAboveThreshold = 0;
+      }
+    };
+
+    source.connect(processor);
+    processor.connect(biCtx.destination);
+    bargeInProcessorRef.current = processor;
+  }, [stopBargeInMonitor]);
+
   const speak = useCallback(async (text: string) => {
     if (!voiceModeRef.current || !text) return;
     stopTts();
+    stopBargeInMonitor();
 
     const { ctx, analyser } = ensureAudioCtx();
     if (ctx.state === 'suspended') await ctx.resume();
@@ -303,6 +464,7 @@ export default function IntelPage() {
         setIsSpeaking(false);
         URL.revokeObjectURL(url);
         ttsAudioRef.current = null;
+        stopBargeInMonitor();
         if (voiceModeRef.current) {
           setStatusText('LISTENING . . .');
           startListening();
@@ -314,18 +476,21 @@ export default function IntelPage() {
         setIsSpeaking(false);
         URL.revokeObjectURL(url);
         ttsAudioRef.current = null;
+        stopBargeInMonitor();
       };
 
       await audio.play();
+      startBargeInMonitor();
     } catch (err) {
       console.error('TTS error:', err);
       setIsSpeaking(false);
+      stopBargeInMonitor();
       if (voiceModeRef.current) {
         setStatusText('LISTENING . . .');
         startListening();
       }
     }
-  }, [ensureAudioCtx, startListening, stopTts]);
+  }, [ensureAudioCtx, startListening, stopTts, startBargeInMonitor, stopBargeInMonitor]);
 
   // ── Toggle voice mode ─────────────────────────────────────────────────────
 
@@ -337,6 +502,7 @@ export default function IntelPage() {
       setIsSpeaking(false);
       stopTts();
       stopMicAndWs();
+      stopBargeInMonitor();
       setStatusText('READY');
     } else {
       sfxActivate();
@@ -344,7 +510,7 @@ export default function IntelPage() {
       ensureAudioCtx();
       startListening();
     }
-  }, [voiceMode, ensureAudioCtx, startListening, stopMicAndWs, stopTts]);
+  }, [voiceMode, ensureAudioCtx, startListening, stopMicAndWs, stopTts, stopBargeInMonitor]);
 
   // ── Call popup helpers (shared logic) ────────────────────────────────────
 
@@ -448,14 +614,26 @@ export default function IntelPage() {
     setStatusText('ROUTING . . .');
     setBriefingVisible(false);
 
+    // Detect exoplanet / system → switch to Eyes on Exoplanets
+    const exo = detectExoplanet(text);
+    if (exo) {
+      setMapAgent('exo');
+      setModeText(`MILKY WAY · ${exo.label}`);
+      const url = `${EXO_URL}#/${exo.type}/${exo.route}`;
+      try { exoIframeRef.current?.contentWindow?.location.replace(url); }
+      catch { if (exoIframeRef.current) exoIframeRef.current.src = url; }
+    }
+
     // Detect celestial body — fly directly to planet, moon, or spacecraft
-    const target = detectCelestial(text);
-    if (target) {
-      setMapAgent('solar');
-      setModeText(`SOLAR SYSTEM · ${target.label}`);
-      const url = `${SOLAR_URL}#/${target.id}${UI_Q}`;
-      try { iframeRef.current?.contentWindow?.location.replace(url); }
-      catch { if (iframeRef.current) iframeRef.current.src = url; }
+    if (!exo) {
+      const target = detectCelestial(text);
+      if (target) {
+        setMapAgent('solar');
+        setModeText(`SOLAR SYSTEM · ${target.label}`);
+        const url = `${SOLAR_URL}#/${target.id}${UI_Q}`;
+        try { iframeRef.current?.contentWindow?.location.replace(url); }
+        catch { if (iframeRef.current) iframeRef.current.src = url; }
+      }
     }
 
     await send(text);
@@ -472,7 +650,10 @@ export default function IntelPage() {
   // ── Sync mapAgent — only when a real agent is selected (never on reset) ───
 
   useEffect(() => {
-    if (agentMode === 'solar_system' || agentMode === 'milky_way') {
+    if (agentMode === 'milky_way') {
+      setMapAgent(prev => prev === 'exo' ? prev : 'exo');
+      setModeText(prev => prev.startsWith('MILKY WAY') ? prev : 'MILKY WAY · EXOPLANETS');
+    } else if (agentMode === 'solar_system') {
       setMapAgent(prev => prev === 'solar' ? prev : 'solar');
     } else if (agentMode !== null) {
       setMapAgent('earth');
@@ -524,7 +705,7 @@ export default function IntelPage() {
 
   return (
     <>
-      {/* Background visualisation — Leaflet map (Earth) or NASA Eyes (Solar / idle) */}
+      {/* Background visualisation — Earth map, NASA Eyes Solar System, or Eyes on Exoplanets */}
       {mapAgent === 'earth' ? (
         <div style={{
           position: 'fixed', top: 56, left: SIDEBAR_W,
@@ -539,6 +720,20 @@ export default function IntelPage() {
             conflicts={(panelData.conflict as { recent_events?: Array<{ date: string; type: string; location: string; fatalities: number; lat: number | null; lng: number | null }> } | undefined)?.recent_events}
           />
         </div>
+      ) : mapAgent === 'exo' ? (
+        <iframe
+          ref={exoIframeRef}
+          src={EXO_DEFAULT}
+          style={{
+            position: 'fixed', top: 56, left: SIDEBAR_W,
+            width: showBriefingPanel ? `calc(100vw - ${SIDEBAR_W + BRIEF_W}px)` : `calc(100vw - ${SIDEBAR_W}px)`,
+            height: 'calc(100vh - 56px)', border: 'none', zIndex: 0,
+            display: 'block', transition: 'width 0.4s ease',
+          }}
+          allow="fullscreen"
+          allowFullScreen
+          title="NASA Eyes on Exoplanets"
+        />
       ) : (
         <iframe
           ref={iframeRef}

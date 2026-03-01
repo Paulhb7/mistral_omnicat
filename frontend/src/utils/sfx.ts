@@ -197,6 +197,12 @@ export function sfxIncomingCall() {
   hudBreath(4000, 0.012, 0.5);
 }
 
+/** Barge-in acknowledged — quick descending chirp */
+export function sfxBargeIn() {
+  hudSweep(1200, 600, 0.12, 0.03);
+  hudTone(700, 0.025, 0.005, 0.02, 0.1);
+}
+
 /** Briefing complete — ascending triad: clean C-E-G */
 export function sfxComplete() {
   hudTone(523, 0.04, 0.005, 0.06, 0.3);          // C5
