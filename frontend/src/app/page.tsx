@@ -518,7 +518,7 @@ export default function Home() {
             margin: '0 auto 44px',
             lineHeight: 1.7,
           }}>
-            to better understand
+            To better understand our World.
           </p>
 
           {/* Scale badges */}
