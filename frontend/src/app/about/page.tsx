@@ -12,28 +12,17 @@ const OmniOrb = dynamic(() => import('@/components/omni-orb').then(m => ({ defau
 const mono = "'Roboto Mono', monospace";
 const sans = "'Plus Jakarta Sans', system-ui, sans-serif";
 
+const AGENT_MODEL = 'Ministral 14B';
+
 const agents = [
-  { icon: '🚢', name: 'Maritime', desc: 'Real-time vessel tracking & AIS data' },
-  { icon: '✈️', name: 'Aviation', desc: 'Flight tracking & aircraft identification' },
-  { icon: '💀', name: 'Doomsday', desc: 'Earthquakes, wildfires, storms & floods' },
-  { icon: '⚔️', name: 'Conflict', desc: 'Armed conflicts, protests & news intel' },
-  { icon: '☀️', name: 'Solar', desc: 'Solar flares & near-Earth objects' },
-  { icon: '🌌', name: 'Milky Way', desc: 'Exoplanet research & scientific papers' },
+  { icon: '🚢', name: 'Maritime', desc: 'Vessel tracking & AIS data', sources: ['AISStream', 'SQLite'] },
+  { icon: '✈️', name: 'Aviation', desc: 'Flight tracking & identification', sources: ['OpenSky', 'ADS-B'] },
+  { icon: '💀', name: 'Doomsday', desc: 'Earthquakes, wildfires & storms', sources: ['NASA EONET', 'USGS'] },
+  { icon: '⚔️', name: 'Conflict', desc: 'Armed conflicts & news intel', sources: ['ACLED', 'GDELT'] },
+  { icon: '☀️', name: 'Solar', desc: 'Solar flares & near-Earth objects', sources: ['NASA DONKI', 'NeoWs'] },
+  { icon: '🌌', name: 'Milky Way', desc: 'Exoplanet research & papers', sources: ['Exoplanet Archive', 'arXiv'] },
 ];
 
-const steps = [
-  { n: '01', label: 'Query', desc: 'Speak or type' },
-  { n: '02', label: 'Route', desc: 'LLM selects agents' },
-  { n: '03', label: 'Tools', desc: 'Live API calls' },
-  { n: '04', label: 'Brief', desc: 'Streamed response' },
-  { n: '05', label: 'Voice', desc: 'Spoken aloud' },
-];
-
-const sources = [
-  'Mistral AI', 'AIS Stream', 'OpenSky', 'NASA EONET', 'USGS',
-  'ACLED', 'GDELT', 'NASA DONKI', 'NASA NeoWs', 'Exoplanet Archive',
-  'arXiv', 'Nominatim', 'Open-Meteo', 'ElevenLabs', 'Voxtral', 'Perplexity',
-];
 
 export default function AboutPage() {
   const { theme } = useTheme();
@@ -334,7 +323,7 @@ export default function AboutPage() {
         </div>
 
         {/* Title */}
-        <div style={{ marginBottom: 48 }}>
+        <div style={{ marginBottom: 36 }}>
           <div style={{
             fontSize: 10, letterSpacing: 4, color: theme.accent, fontFamily: mono,
             textTransform: 'uppercase', marginBottom: 12,
@@ -344,73 +333,136 @@ export default function AboutPage() {
             Multi-Agent OSINT Platform
           </div>
           <h1 style={{
-            fontSize: 'clamp(36px, 4vw, 52px)', fontWeight: 700,
-            letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 14,
+            fontSize: 'clamp(32px, 3.5vw, 46px)', fontWeight: 700,
+            letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 10,
           }}>
             Omni<span style={{ color: theme.accent }}>CAT</span>
           </h1>
-          <p style={{ fontSize: 15, color: theme.fgDim, lineHeight: 1.7, maxWidth: 560 }}>
+          <p style={{ fontSize: 14, color: theme.fgDim, lineHeight: 1.6, maxWidth: 540 }}>
             Speak or type a query — the orchestrator routes to specialist agents, calls live APIs,
             and delivers a structured intelligence briefing you can read or listen to.
           </p>
         </div>
 
-        {/* Flow steps */}
-        <div style={{
-          display: 'flex', gap: 2, marginBottom: 40,
-        }}>
-          {steps.map(({ n, label, desc }) => (
-            <div key={n} style={{
-              flex: 1, padding: '14px 16px',
-              background: `${theme.fg}08`,
-              borderTop: `2px solid ${theme.accent}30`,
-            }}>
-              <div style={{ fontSize: 8, letterSpacing: 3, color: theme.accent, fontFamily: mono, marginBottom: 4 }}>{n}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>{label}</div>
-              <div style={{ fontSize: 11, color: theme.fgMuted }}>{desc}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Agents grid */}
-        <div style={{ marginBottom: 40 }}>
+        {/* ── Architecture Diagram ── */}
+        <div style={{ marginBottom: 32 }}>
           <div style={{
             fontSize: 7, letterSpacing: 4, color: theme.fgMuted, fontFamily: mono,
             textTransform: 'uppercase', marginBottom: 14,
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
-            Specialist agents
+            Architecture
             <div style={{ flex: 1, height: 1, background: `${theme.fg}10` }} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+
+          {/* User Voice */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              display: 'inline-block', padding: '10px 28px',
+              border: `2px solid ${theme.accent}`,
+              background: `${theme.accent}12`,
+            }}>
+              <div style={{ fontSize: 8, letterSpacing: 3, color: theme.accent, fontFamily: mono, textTransform: 'uppercase', marginBottom: 2 }}>
+                User Voice
+              </div>
+              <div style={{ fontSize: 10, color: theme.fgDim, fontFamily: mono }}>
+                Voxtral-realtime
+              </div>
+            </div>
+          </div>
+
+          {/* Arrow down */}
+          <div style={{ textAlign: 'center', color: theme.accent, fontSize: 18, lineHeight: 1, margin: '4px 0' }}>
+            {'\u25BC'}
+          </div>
+
+          {/* Orchestrator */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              display: 'inline-block', padding: '10px 28px',
+              border: `2px solid ${theme.accent}`,
+              background: `${theme.accent}12`,
+            }}>
+              <div style={{ fontSize: 8, letterSpacing: 3, color: theme.accent, fontFamily: mono, textTransform: 'uppercase', marginBottom: 2 }}>
+                Orchestrator
+              </div>
+              <div style={{ fontSize: 10, color: theme.fgDim, fontFamily: mono }}>
+                Mistral Large 675B
+              </div>
+            </div>
+          </div>
+
+          {/* Arrow down with fan-out lines */}
+          <div style={{ textAlign: 'center', color: theme.accent, fontSize: 18, lineHeight: 1, margin: '4px 0' }}>
+            {'\u25BC'}
+          </div>
+
+          {/* Agents grid with data sources */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 3 }}>
             {agents.map(a => (
               <div key={a.name} style={{
-                padding: '14px 18px', background: `${theme.fg}06`,
+                padding: '12px 14px',
+                border: `1px solid ${theme.accent}20`,
+                background: `${theme.fg}05`,
+                display: 'flex', flexDirection: 'column',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontSize: 16 }}>{a.icon}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1 }}>{a.name}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 2 }}>
+                  <span style={{ fontSize: 14 }}>{a.icon}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1 }}>{a.name}</span>
+                  <span style={{ fontSize: 7, fontFamily: mono, letterSpacing: 1, color: theme.fgMuted, marginLeft: 'auto', textTransform: 'uppercase' }}>Agent</span>
                 </div>
-                <div style={{ fontSize: 11, color: theme.fgMuted, lineHeight: 1.5 }}>{a.desc}</div>
+                <div style={{ fontSize: 7, fontFamily: mono, color: theme.accent, letterSpacing: 1, marginBottom: 6 }}>{AGENT_MODEL}</div>
+                <div style={{ fontSize: 10, color: theme.fgDim, lineHeight: 1.4, marginBottom: 8 }}>{a.desc}</div>
+                {/* Data sources tags */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 'auto' }}>
+                  {a.sources.map(s => (
+                    <span key={s} style={{
+                      fontSize: 7, letterSpacing: 1, padding: '2px 6px',
+                      border: `1px solid ${theme.accent}30`,
+                      color: theme.accent, fontFamily: mono,
+                      textTransform: 'uppercase',
+                    }}>
+                      {s}
+                    </span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
+
+          {/* Arrow down */}
+          <div style={{ textAlign: 'center', color: theme.accent, fontSize: 18, lineHeight: 1, margin: '6px 0' }}>
+            {'\u25BC'}
+          </div>
+
+          {/* Briefing output box */}
+          <div style={{ textAlign: 'center' }}>
+            <span style={{
+              display: 'inline-block', padding: '7px 28px',
+              border: `1px solid ${theme.accent}40`,
+              background: `${theme.accent}10`,
+              fontSize: 11, fontFamily: mono, letterSpacing: 2,
+              color: theme.accent, textTransform: 'uppercase',
+            }}>
+              Omni&apos;s Voice — ElevenLabs Personalized Voice
+            </span>
+          </div>
         </div>
 
-        {/* Data sources */}
-        <div style={{ marginBottom: 40 }}>
+        {/* ── Shared tools ── */}
+        <div style={{ marginBottom: 28 }}>
           <div style={{
             fontSize: 7, letterSpacing: 4, color: theme.fgMuted, fontFamily: mono,
-            textTransform: 'uppercase', marginBottom: 12,
+            textTransform: 'uppercase', marginBottom: 10,
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
-            Data sources
+            Shared services
             <div style={{ flex: 1, height: 1, background: `${theme.fg}10` }} />
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {sources.map(s => (
+            {['Nominatim', 'Open-Meteo', 'Perplexity', 'ElevenLabs TTS', 'Voxtral STT'].map(s => (
               <span key={s} style={{
-                fontSize: 9, letterSpacing: 1, padding: '3px 10px',
+                fontSize: 8, letterSpacing: 1, padding: '3px 10px',
                 border: `1px solid ${theme.accent}25`,
                 color: theme.accent, fontFamily: mono,
                 textTransform: 'uppercase',
@@ -419,13 +471,6 @@ export default function AboutPage() {
               </span>
             ))}
           </div>
-        </div>
-
-        {/* Tech stack — single line */}
-        <div style={{
-          fontSize: 11, color: theme.fgMuted, fontFamily: mono, letterSpacing: 1,
-        }}>
-          Mistral Large {'\u00b7'} Strands Agents {'\u00b7'} Voxtral STT {'\u00b7'} ElevenLabs TTS {'\u00b7'} FastAPI {'\u00b7'} Next.js 15 {'\u00b7'} Three.js
         </div>
 
         {/* Watermark */}
