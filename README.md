@@ -7,7 +7,7 @@ OSINT (Open Source Intelligence) analysis system for maritime, aerial, geopoliti
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     NEXT.JS FRONTEND                            │
-│          (Leaflet Map / Briefing Panel / SSE Client)            │
+│  (Leaflet Map / NASA Eyes / Briefing Panel / SSE Client)        │
 └──────────────────────────┬──────────────────────────────────────┘
                            │ SSE /stream
 ┌──────────────────────────▼──────────────────────────────────────┐
@@ -65,17 +65,39 @@ OSINT (Open Source Intelligence) analysis system for maritime, aerial, geopoliti
 - Solar flares (NASA DONKI)
 - Near-Earth objects / asteroids (NASA NeoWs)
 - Space weather briefings
+- Auto-navigation to 50+ celestial bodies (planets, moons, spacecraft like JWST, Voyager, Parker Solar Probe) via NASA Eyes on the Solar System
 
 ### 6. Milky Way — Exoplanet Research
 - Exoplanet data from NASA Exoplanet Archive
 - Scientific papers from arXiv
 - Habitability assessments
+- Interactive 3D exploration via NASA Eyes on Exoplanets (TRAPPIST-1, Proxima Centauri, Kepler systems, and more)
 
-### 7. Voice Interface — Jarvis Mode
+### 7. Asteroid & NEO Tracking
+- Near-Earth object detection keywords auto-switch to NASA Eyes on Asteroids
+- Dedicated asteroid visualization view
+
+### 8. Voice Interface — Jarvis Mode
 - **STT (Speech-to-Text)**: Real-time transcription via Mistral Voxtral (`voxtral-mini-transcribe-realtime-2602`) over WebSocket, with silence detection for auto-submit
 - **TTS (Text-to-Speech)**: ElevenLabs streaming API with a custom-built voice ("Omni"), inspired by Jarvis — designed for authoritative, calm intelligence briefings
-- **OmniOrb**: 3D animated voice orb (Three.js, 2800 particles, Fibonacci sphere distribution) that reacts in real-time to voice frequency data via WebAudio AnalyserNode
+- **Barge-in**: Interrupt the agent mid-speech by talking — RMS energy detection with echo cancellation, 3-frame confirmation, 500ms cooldown
+- **OmniOrb**: 3D animated voice orb (Three.js, 2800 particles + 700 halo, Fibonacci sphere distribution) that reacts in real-time to voice frequency data via WebAudio AnalyserNode
+- **HUD Sound Effects**: Jarvis-inspired synthesized sounds (Web Audio API) — boot sequence, blips, confirmation tones, incoming call ring, barge-in chirp, briefing complete triad
 - Full voice loop: Listen → Transcribe → Query agents → Speak briefing → Listen again
+
+### 9. Visualizations
+- **4 Map Views**: Earth (Leaflet), NASA Eyes Solar System, NASA Eyes Exoplanets, NASA Eyes Asteroids — auto-switching based on query context
+- **Jarvis HUD Loader**: Concentric rotating SVG rings with tick marks, scanning arcs, and pulsing core — slow idle animation, fast spin during agent work
+- **Briefing Panel**: Collapsible right-side panel with structured markdown intelligence briefings
+- **Intel Panels**: Climate events, earthquakes, conflicts displayed with sorting and mini-map
+
+### 10. Themes
+- **OmniCAT** (default): Dark theme, orange accent (#fa500f), monospace HUD aesthetic
+- **Cyberpunk**: Neon cyan (#00f0ff) + magenta (#ff00aa), scanline overlay, glow effects, flicker animations — toggle with `Ctrl+Shift+X`
+
+### 11. Easter Eggs
+- **NASA Incoming Call**: Asteroid mission briefing popup (`Cmd+Shift+N`)
+- **Vader Incoming Call**: Dark side exoplanet intelligence popup (`Cmd+Shift+V`)
 
 ## Installation
 
@@ -118,12 +140,15 @@ npm run dev  # http://localhost:3000
 Open `http://localhost:3000` in your browser and enter a location or query.
 
 ### Example Queries
-- `Analyze the Marseille area`
-- `What vessels are near the Strait of Gibraltar?`
-- `What aircraft are flying over Paris?`
-- `What are the risks around Kyiv?`
-- `Solar system briefing`
-- `Tell me about TRAPPIST-1 e`
+- `Analyze the Marseille area` — maritime, aviation, weather, threats
+- `What vessels are near the Strait of Gibraltar?` — maritime surveillance
+- `What aircraft are flying over Paris?` — aerial tracking
+- `What are the risks around Kyiv?` — conflict & geopolitical intel
+- `Solar system briefing` — space weather, solar flares
+- `Tell me about TRAPPIST-1 e` — exoplanet research + NASA Eyes
+- `Are there any asteroids near Earth?` — NEO tracking + asteroid view
+- `Mars` — auto-navigates to Mars in NASA Eyes Solar System
+- `Proxima Centauri` — exoplanet system exploration
 
 ## Configuration
 
@@ -156,10 +181,11 @@ Open `http://localhost:3000` in your browser and enter a location or query.
 - **Next.js 15** + **React 19** — UI framework
 - **TypeScript** — Language
 - **Three.js** — 3D OmniOrb voice visualizer
-- **Leaflet** — Interactive maps
+- **Leaflet** — Interactive Earth map with event overlays
+- **NASA Eyes** — Embedded 3D viewers for Solar System, Exoplanets, and Asteroids
 - **Tailwind CSS 4** — Styling
 - **react-markdown** — Briefing rendering
-- **WebAudio API** — Voice frequency analysis for orb reactivity
+- **WebAudio API** — Voice frequency analysis, barge-in detection, synthesized HUD SFX
 
 ### Voice Stack
 - **Mistral Voxtral** — Real-time speech-to-text (WebSocket streaming, PCM s16le 16kHz)
@@ -226,8 +252,20 @@ backend/
 
 frontend/
 ├── src/app/         # Next.js App Router pages
-├── src/components/  # React components (map, briefing panel, etc.)
+├── src/components/  # React components
+│   ├── earth-map.tsx        # Leaflet map with event overlays
+│   ├── omni-orb.tsx         # Three.js 3D voice orb
+│   ├── voice-orb-status.tsx # Voice state indicator
+│   ├── mic-waveform.tsx     # Mic input waveform
+│   ├── jarvis-loader.tsx    # HUD loading animation
+│   ├── briefing-panel.tsx   # Intelligence briefing display
+│   ├── intel-panels.tsx     # Climate/earthquake/conflict panels
+│   ├── search-bar.tsx       # Search input + mic toggle
+│   ├── nasa-call-popup.tsx  # NASA incoming call easter egg
+│   └── vader-call-popup.tsx # Vader incoming call easter egg
 ├── src/hooks/       # Custom hooks (SSE streaming)
+├── src/utils/sfx.ts # Jarvis-inspired HUD sound effects
+├── src/context/     # Theme context (OmniCAT / Cyberpunk)
 └── package.json
 ```
 
