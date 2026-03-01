@@ -32,16 +32,6 @@ _ISO2_TO_ISO3 = {
     "zm": "ZMB", "zw": "ZWE",
 }
 
-_WMO_CODES = {
-    0: "Clear sky", 1: "Mostly clear", 2: "Partly cloudy", 3: "Overcast",
-    45: "Fog", 48: "Freezing fog",
-    51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle",
-    61: "Light rain", 63: "Rain", 65: "Heavy rain",
-    71: "Light snow", 73: "Snow", 75: "Heavy snow",
-    80: "Showers", 81: "Moderate showers", 82: "Violent showers",
-    95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Severe thunderstorm with hail",
-}
-
 
 async def _geocode_location(location: str) -> dict:
     """Core geocoding logic, callable directly from the orchestrator."""
@@ -72,32 +62,6 @@ async def _geocode_location(location: str) -> dict:
     }
 
 
-async def _get_weather(lat: float, lng: float) -> dict:
-    """Core weather logic, callable directly from the orchestrator."""
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            "https://api.open-meteo.com/v1/forecast",
-            params={
-                "latitude": lat,
-                "longitude": lng,
-                "current": "temperature_2m,wind_speed_10m,weather_code,relative_humidity_2m",
-                "wind_speed_unit": "kmh",
-                "timezone": "auto",
-            },
-            timeout=10,
-        )
-        data = r.json()
-
-    current = data.get("current", {})
-
-    return {
-        "temperature_c": current.get("temperature_2m"),
-        "condition": _WMO_CODES.get(current.get("weather_code", -1), "Unknown"),
-        "wind_kmh": current.get("wind_speed_10m"),
-        "humidity_pct": current.get("relative_humidity_2m"),
-    }
-
-
 @tool
 async def geocode_location(location: str) -> dict:
     """Convert a place name (city, country, region, port, airport) to latitude/longitude coordinates.
@@ -112,20 +76,4 @@ async def geocode_location(location: str) -> dict:
     if "lat" in result and "lng" in result:
         _emit({"type": "location", "name": result.get("location", "Unknown"), "lat": result["lat"], "lng": result["lng"]})
         _emit({"type": "data_geocode_location", "data": result})
-    return result
-
-
-@tool
-async def get_weather(lat: float, lng: float) -> dict:
-    """Retrieve current weather conditions for a geographic position.
-
-    Args:
-        lat: Latitude of the location (e.g. 43.296).
-        lng: Longitude of the location (e.g. 5.369).
-
-    Returns:
-        Current weather conditions (temperature, wind, humidity, description).
-    """
-    result = await _get_weather(lat, lng)
-    _emit({"type": "data_get_weather", "data": result})
     return result

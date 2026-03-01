@@ -4,7 +4,7 @@ from pathlib import Path
 from strands import Agent
 from strands.models.bedrock import BedrockModel
 
-from tools.geo_tools import geocode_location, get_weather
+from tools.geo_tools import geocode_location
 from tools.doomsday_tools import get_climate_events, get_earthquakes
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
@@ -25,7 +25,6 @@ def create_doomsday_agent() -> Agent:
         model=model,
         tools=[
             geocode_location,
-            get_weather,
             get_climate_events,
             get_earthquakes,
         ],

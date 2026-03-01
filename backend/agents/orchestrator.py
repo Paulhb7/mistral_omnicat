@@ -21,7 +21,7 @@ from agents.agent_tools import (
     solar_system_analyst,
     milky_way_analyst,
 )
-from tools.geo_tools import geocode_location, get_weather
+from tools.geo_tools import geocode_location
 from tools.data_bus import drain as _drain_bus
 
 # Re-export agent factories for backward compatibility (server.py, tests)
@@ -73,7 +73,6 @@ def _get_orchestrator_agent(session_id: str) -> Agent:
             solar_system_analyst,
             milky_way_analyst,
             geocode_location,
-            get_weather,
         ],
         system_prompt=_load_prompt("orchestrator_agent"),
         session_manager=session_manager,

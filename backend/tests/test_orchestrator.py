@@ -67,7 +67,7 @@ def test_get_orchestrator_agent_has_all_tools(mock_agent_cls, mock_model_cls):
     mock_model_cls.assert_called_once()
     mock_agent_cls.assert_called_once()
     call_kwargs = mock_agent_cls.call_args[1]
-    # 5 specialist agent-tools + geocode_location + get_weather = 7
+    # 6 specialist agent-tools + geocode_location = 7
     assert len(call_kwargs["tools"]) == 7
     assert "orchestrator" in call_kwargs["system_prompt"].lower() or "osint" in call_kwargs["system_prompt"].lower()
 

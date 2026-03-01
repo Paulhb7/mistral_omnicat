@@ -11,7 +11,7 @@ from tools.maritime_tools import (
     monitor_area,
     list_monitored_vessels,
 )
-from tools.geo_tools import geocode_location, get_weather
+from tools.geo_tools import geocode_location
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
@@ -31,7 +31,6 @@ def create_maritime_agent() -> Agent:
         model=model,
         tools=[
             geocode_location,
-            get_weather,
             search_vessel,
             track_vessel_position,
             get_vessel_history,
