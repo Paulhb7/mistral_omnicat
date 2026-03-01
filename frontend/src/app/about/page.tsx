@@ -28,6 +28,22 @@ export default function AboutPage() {
   const { theme } = useTheme();
   const { send, briefing, isLoading } = useChat();
 
+  // ── Slide state ────────────────────────────────────────────────────────
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const totalSlides = 2;
+
+  const nextSlide = useCallback(() => setCurrentSlide(s => Math.min(s + 1, totalSlides - 1)), []);
+  const prevSlide = useCallback(() => setCurrentSlide(s => Math.max(s - 1, 0)), []);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); nextSlide(); }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prevSlide(); }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [nextSlide, prevSlide]);
+
   // ── Voice state ──────────────────────────────────────────────────────────
   const [voiceMode, setVoiceMode] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
