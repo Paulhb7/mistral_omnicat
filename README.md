@@ -1,5 +1,9 @@
 # OmniCAT — Multi-Agent OSINT Intelligence
 
+[![OmniCAT Demo Video](https://img.youtube.com/vi/IuCIHc0FkvE/0.jpg)](https://www.youtube.com/watch?v=IuCIHc0FkvE)
+
+> **Regarder la démo du projet sur YouTube : [https://youtu.be/IuCIHc0FkvE](https://youtu.be/IuCIHc0FkvE)**
+
 OSINT (Open Source Intelligence) analysis system for maritime, aerial, geopolitical and space weather surveillance, powered by Mistral AI agents.
 
 ## ElevenLabs — Voice & Video
