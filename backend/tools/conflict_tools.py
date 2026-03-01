@@ -1,6 +1,6 @@
 """
 Geopolitical intelligence tools — armed conflicts and news.
-Sources: ACLED (conflicts) · GDELT (news).
+Sources: ACLED (conflicts, OAuth) · GDELT (news) · Perplexity (live search).
 """
 import os
 import urllib.parse
@@ -10,6 +10,37 @@ import httpx
 from strands import tool
 
 from tools.data_bus import emit as _emit
+
+
+# ---------------------------------------------------------------------------
+# ACLED helpers (OAuth Bearer token)
+# ---------------------------------------------------------------------------
+
+async def _acled_get_token() -> str | None:
+    """Obtain an OAuth access token from ACLED using username/password."""
+    username = os.getenv("ACLED_USERNAME")
+    password = os.getenv("ACLED_PASSWORD")
+    if not username or not password:
+        return None
+
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.post(
+                "https://acleddata.com/oauth/token",
+                data={
+                    "username": username,
+                    "password": password,
+                    "grant_type": "password",
+                    "client_id": "acled",
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=15,
+            )
+            if r.status_code == 200:
+                return r.json().get("access_token")
+    except Exception:
+        pass
+    return None
 
 
 @tool
@@ -23,17 +54,16 @@ async def get_conflict_events(country: str, days: int = 30) -> dict:
     Returns:
         Conflict events with type, location, actors and casualty count.
     """
-    acled_key = os.getenv("ACLED_API_KEY")
-    acled_email = os.getenv("ACLED_EMAIL")
-    if not acled_key or not acled_email:
-        return {"available": False, "error": "ACLED_API_KEY and ACLED_EMAIL not configured."}
+    token = await _acled_get_token()
+    if not token:
+        return {"available": False, "error": "ACLED credentials not configured (ACLED_USERNAME / ACLED_PASSWORD)."}
 
     start = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
 
     try:
         async with httpx.AsyncClient() as client:
             r = await client.get(
-                "https://api.acleddata.com/acled/read",
+                "https://acleddata.com/api/acled/read",
                 params={
                     "_format": "json",
                     "country": country,
@@ -41,8 +71,10 @@ async def get_conflict_events(country: str, days: int = 30) -> dict:
                     "event_date_where": ">",
                     "limit": 50,
                     "fields": "event_date|event_type|sub_event_type|fatalities|location|actor1|actor2|latitude|longitude",
-                    "key": acled_key,
-                    "email": acled_email,
+                },
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
                 },
                 timeout=20,
             )
@@ -53,7 +85,7 @@ async def get_conflict_events(country: str, days: int = 30) -> dict:
         return {"available": False, "error": "ACLED API timeout"}
 
     if data.get("message") == "Access denied":
-        return {"available": False, "error": "ACLED access denied — check the API key."}
+        return {"available": False, "error": "ACLED access denied — account may lack API permissions."}
 
     events = data.get("data", [])
     total_fatalities = sum(int(e.get("fatalities") or 0) for e in events)
@@ -140,4 +172,67 @@ async def get_news(location_name: str) -> dict:
 
     result = {"total": len(processed), "articles": processed}
     _emit({"type": "data_get_news", "data": result})
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Perplexity Sonar — live conflict intelligence search
+# ---------------------------------------------------------------------------
+
+@tool
+async def search_conflict_intelligence(query: str) -> dict:
+    """Search for live geopolitical intelligence, armed conflicts, security alerts and crisis news using Perplexity AI.
+
+    Use this tool as a fallback when ACLED or GDELT are unavailable, or to get
+    real-time context about a conflict zone, political crisis, or security event.
+
+    Args:
+        query: Search query about conflicts, crises or security (e.g. "Ukraine frontline situation", "Sudan civil war latest").
+
+    Returns:
+        AI-synthesised intelligence brief with sources.
+    """
+    api_key = os.getenv("PERPLEXITY_API_KEY")
+    if not api_key:
+        return {"available": False, "error": "PERPLEXITY_API_KEY not configured."}
+
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "sonar",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are a geopolitical intelligence analyst. "
+                                "Provide a concise, factual briefing on the query. "
+                                "Include key events, actors, casualty figures, and dates. "
+                                "Cite your sources. Keep it short and spoken-friendly."
+                            ),
+                        },
+                        {"role": "user", "content": query},
+                    ],
+                    "max_tokens": 800,
+                    "temperature": 0.1,
+                },
+                timeout=30,
+            )
+            if r.status_code != 200:
+                return {"available": False, "error": f"Perplexity API error {r.status_code}"}
+            data = r.json()
+    except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.TimeoutException):
+        return {"available": False, "error": "Perplexity API timeout"}
+
+    content = ""
+    if "choices" in data and data["choices"]:
+        content = data["choices"][0]["message"]["content"]
+
+    result = {"available": True, "query": query, "briefing": content}
+    _emit({"type": "data_search_conflict_intelligence", "data": result})
     return result

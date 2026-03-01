@@ -4,7 +4,7 @@ from pathlib import Path
 from strands import Agent
 from strands.models.bedrock import BedrockModel
 
-from tools.conflict_tools import get_conflict_events, get_news
+from tools.conflict_tools import get_conflict_events, get_news, search_conflict_intelligence
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
@@ -22,6 +22,6 @@ def create_conflict_agent() -> Agent:
 
     return Agent(
         model=model,
-        tools=[get_conflict_events, get_news],
+        tools=[get_conflict_events, get_news, search_conflict_intelligence],
         system_prompt=_load_prompt("conflict_agent"),
     )

@@ -467,6 +467,7 @@ export default function IntelPage() {
 
   const nasaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const vaderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cyberTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activateVoiceIfNeeded = useCallback(() => {
     if (!voiceModeRef.current) {
@@ -524,8 +525,16 @@ export default function IntelPage() {
   }, [vaderPopupVisible, activateVoiceIfNeeded, ensureAudioCtx, speak]);
 
   const handleVaderAccept = useCallback(() => {
-    setVaderPopupVisible(false);
-  }, []);
+    // Popup stays open (it transitions through message → video phases internally).
+    // Activate cyberpunk mode 10s after accepting
+    if (cyberTimerRef.current) clearTimeout(cyberTimerRef.current);
+    if (themeKey !== 'cyberpunk') {
+      cyberTimerRef.current = setTimeout(() => {
+        cyberTimerRef.current = null;
+        toggleTheme();
+      }, 10_000);
+    }
+  }, [themeKey, toggleTheme]);
 
   const handleVaderDismiss = useCallback(() => {
     setVaderPopupVisible(false);

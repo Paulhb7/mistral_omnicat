@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTheme } from '@/context/theme-context';
+
+type Phase = 'incoming' | 'message' | 'video';
 
 interface VaderCallPopupProps {
   visible: boolean;
@@ -15,17 +17,49 @@ export function VaderCallPopup({ visible, onAccept, onDismiss }: VaderCallPopupP
   const { themeKey } = useTheme();
   const isCyber = themeKey === 'cyberpunk';
   const popupRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [phase, setPhase] = useState<Phase>('incoming');
 
-  // Accept on Enter, dismiss on Escape
+  // Reset phase when popup becomes visible
+  useEffect(() => {
+    if (visible) setPhase('incoming');
+  }, [visible]);
+
+  // Keyboard: Enter to accept (incoming only), Escape to dismiss
   useEffect(() => {
     if (!visible) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') { e.preventDefault(); onAccept(); }
-      if (e.key === 'Escape') { e.preventDefault(); onDismiss(); }
+      if (e.key === 'Enter' && phase === 'incoming') {
+        e.preventDefault();
+        handleAccept();
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onDismiss();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [visible, onAccept, onDismiss]);
+  }, [visible, phase, onDismiss]);
+
+  // Auto-transition: message → video after 3s
+  useEffect(() => {
+    if (phase !== 'message') return;
+    const timer = setTimeout(() => setPhase('video'), 3000);
+    return () => clearTimeout(timer);
+  }, [phase]);
+
+  // Auto-play video when entering video phase
+  useEffect(() => {
+    if (phase === 'video' && videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  }, [phase]);
+
+  function handleAccept() {
+    setPhase('message');
+    onAccept();
+  }
 
   if (!visible) return null;
 
@@ -33,6 +67,127 @@ export function VaderCallPopup({ visible, onAccept, onDismiss }: VaderCallPopupP
   const accentDim = 'rgba(255,34,34,0.12)';
   const glow = `0 0 30px rgba(255,30,30,0.3), 0 0 60px rgba(255,30,30,0.15), inset 0 0 30px rgba(255,30,30,0.05)`;
 
+  // ── Phase: Video ──────────────────────────────────────────────────────────
+  if (phase === 'video') {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.92)',
+        backdropFilter: 'blur(8px)',
+        animation: 'fadeIn 0.3s ease',
+      }}>
+        <div style={{ position: 'relative', maxWidth: 800, width: '92vw' }}>
+          {/* Close button */}
+          <button
+            onClick={onDismiss}
+            style={{
+              position: 'absolute', top: -36, right: 0,
+              background: 'transparent', border: 'none',
+              color: 'rgba(255,255,255,0.5)', fontFamily: mono,
+              fontSize: 12, letterSpacing: 3, cursor: 'pointer',
+              textTransform: 'uppercase',
+              transition: 'color 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#fff'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
+          >
+            CLOSE &times;
+          </button>
+
+          {/* Video player */}
+          <video
+            ref={videoRef}
+            src="/media/call_from_space.mp4"
+            controls
+            style={{
+              width: '100%',
+              borderRadius: 2,
+              border: `1px solid ${accent}`,
+              boxShadow: glow,
+            }}
+          />
+
+          {/* Red scan line overlay */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none', borderRadius: 2,
+            background: `repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,30,30,0.015) 3px, rgba(255,30,30,0.015) 6px)`,
+          }} />
+        </div>
+
+        <style>{`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // ── Phase: Message ("someone from very far") ──────────────────────────────
+  if (phase === 'message') {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.85)',
+        backdropFilter: 'blur(6px)',
+        animation: 'fadeIn 0.3s ease',
+      }}>
+        <div style={{
+          fontFamily: mono,
+          textAlign: 'center',
+          animation: 'popupSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}>
+          {/* Pulsing dot */}
+          <div style={{
+            width: 12, height: 12, borderRadius: '50%',
+            background: accent, margin: '0 auto 24px',
+            boxShadow: `0 0 12px ${accent}, 0 0 24px ${accent}, 0 0 48px rgba(255,30,30,0.3)`,
+            animation: 'pulse 0.8s ease-in-out infinite',
+          }} />
+
+          <div style={{
+            fontSize: 18, letterSpacing: 3, color: '#ffdde0',
+            textShadow: `0 0 16px ${accent}`,
+            lineHeight: 1.8,
+          }}>
+            It looks like someone from very far
+            <br />is calling you&hellip;
+          </div>
+
+          <div style={{
+            fontSize: 9, letterSpacing: 4, color: accent, opacity: 0.5,
+            marginTop: 20, textTransform: 'uppercase',
+          }}>
+            Establishing connection
+            <span style={{ animation: 'blink 1s step-end infinite' }}>&hellip;</span>
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes popupSlideIn {
+            from { opacity: 0; transform: scale(0.92) translateY(12px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+          }
+          @keyframes blink {
+            50% { opacity: 0; }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // ── Phase: Incoming call (Accept / Deny) ──────────────────────────────────
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
@@ -57,13 +212,13 @@ export function VaderCallPopup({ visible, onAccept, onDismiss }: VaderCallPopupP
           overflow: 'hidden',
         }}
       >
-        {/* Scan line effect — red tint */}
+        {/* Scan line effect */}
         <div style={{
           position: 'absolute', inset: 0, pointerEvents: 'none',
           background: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,30,30,0.012) 2px, rgba(255,30,30,0.012) 4px)`,
         }} />
 
-        {/* Top accent bar — red */}
+        {/* Top accent bar */}
         <div style={{
           position: 'absolute', top: 0, left: 0, right: 0, height: 2,
           background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
@@ -74,7 +229,6 @@ export function VaderCallPopup({ visible, onAccept, onDismiss }: VaderCallPopupP
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18,
         }}>
-          {/* Pulsing red dot */}
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
             background: accent,
@@ -128,10 +282,10 @@ export function VaderCallPopup({ visible, onAccept, onDismiss }: VaderCallPopupP
           </div>
         </div>
 
-        {/* Buttons */}
+        {/* Buttons: Accept / Deny */}
         <div style={{ display: 'flex', gap: 12 }}>
           <button
-            onClick={onAccept}
+            onClick={handleAccept}
             style={{
               flex: 1, padding: '10px 0',
               background: accentDim,
@@ -153,7 +307,7 @@ export function VaderCallPopup({ visible, onAccept, onDismiss }: VaderCallPopupP
               e.currentTarget.style.boxShadow = '0 0 12px rgba(255,34,34,0.15)';
             }}
           >
-            Join the Dark Side
+            Accept
           </button>
           <button
             onClick={onDismiss}
@@ -176,18 +330,17 @@ export function VaderCallPopup({ visible, onAccept, onDismiss }: VaderCallPopupP
               e.currentTarget.style.color = 'rgba(255,255,255,0.35)';
             }}
           >
-            Resist
+            Deny
           </button>
         </div>
 
-        {/* Corner brackets — red */}
+        {/* Corner brackets */}
         <div style={{ position: 'absolute', top: 6, left: 6, width: 10, height: 10, borderTop: `1px solid ${accent}`, borderLeft: `1px solid ${accent}`, opacity: 0.4, pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: 6, right: 6, width: 10, height: 10, borderTop: `1px solid ${accent}`, borderRight: `1px solid ${accent}`, opacity: 0.4, pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: 6, left: 6, width: 10, height: 10, borderBottom: `1px solid ${accent}`, borderLeft: `1px solid ${accent}`, opacity: 0.4, pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: 6, right: 6, width: 10, height: 10, borderBottom: `1px solid ${accent}`, borderRight: `1px solid ${accent}`, opacity: 0.4, pointerEvents: 'none' }} />
       </div>
 
-      {/* Inline keyframe animations (shared names with NASA popup) */}
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
@@ -200,6 +353,10 @@ export function VaderCallPopup({ visible, onAccept, onDismiss }: VaderCallPopupP
         @keyframes scanBar {
           0%, 100% { opacity: 0.3; }
           50% { opacity: 1; }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.85); }
         }
       `}</style>
     </div>
