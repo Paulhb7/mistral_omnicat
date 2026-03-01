@@ -7,6 +7,8 @@ import { useChat } from '@/hooks/use-chat';
 import { useTheme } from '@/context/theme-context';
 import { sfxActivate, sfxDeactivate, sfxListening, sfxSubmit, sfxSpeakStart, sfxComplete } from '@/utils/sfx';
 import OrangeGlobe from '@/components/orange-globe';
+import SpiralGalaxy from '@/components/spiral-galaxy';
+import SolarSystem from '@/components/solar-system';
 
 const OmniOrb = dynamic(() => import('@/components/omni-orb').then(m => ({ default: m.OmniOrb })), { ssr: false });
 
@@ -428,7 +430,7 @@ export default function Home() {
             lineHeight: 1.1,
             marginBottom: 36,
           }}>
-            The World is <span style={{ color: theme.accent }}>Changing</span>
+            Our world has <span style={{ color: theme.accent }}>changed.</span>
           </h1>
 
           <p style={{
@@ -510,25 +512,23 @@ export default function Home() {
           </p>
 
           <p style={{
-            fontSize: 'clamp(14px, 1.6vw, 17px)',
-            color: theme.fgMuted,
-            maxWidth: 520,
+            fontSize: 'clamp(15px, 1.8vw, 19px)',
+            color: theme.fgDim,
+            maxWidth: 560,
             margin: '0 auto 44px',
             lineHeight: 1.7,
           }}>
-            A multi-agent OSINT platform that collects, analyses and prevents&nbsp;&mdash;&nbsp;powered
-            by 6 specialist AI agents and real-time data from 12+ sources.
-            Just ask, by voice.
+            to better understand
           </p>
 
-          {/* Tech badges */}
+          {/* Scale badges */}
           <div style={{
             display: 'flex', flexWrap: 'wrap', justifyContent: 'center',
-            gap: 8, marginBottom: 40,
+            gap: 8,
           }}>
-            {['Mistral Large 675B', 'Voxtral STT', 'ElevenLabs TTS', '6 Specialist Agents', '12+ Live APIs'].map(tag => (
+            {['Local', 'National', 'Global', 'Solar', 'Galactic'].map(tag => (
               <span key={tag} style={{
-                fontSize: 8, letterSpacing: 2, padding: '5px 14px',
+                fontSize: 9, letterSpacing: 3, padding: '6px 16px',
                 border: `1px solid ${theme.accent}25`,
                 background: `${theme.accent}08`,
                 color: theme.accent, fontFamily: mono,
@@ -537,24 +537,6 @@ export default function Home() {
                 {tag}
               </span>
             ))}
-          </div>
-
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '8px 20px',
-            border: `1px solid ${theme.accentBorder}`,
-            background: theme.accentDim,
-            fontSize: 11, letterSpacing: 2,
-            color: theme.accent,
-            fontFamily: mono,
-            textTransform: 'uppercase',
-          }}>
-            <span style={{
-              width: 5, height: 5, borderRadius: '50%',
-              background: theme.accent, display: 'inline-block',
-              animation: 'pulse 2s ease-in-out infinite',
-            }} />
-            Collect &middot; Analyse &middot; Prevent
           </div>
         </div>
       </div>
@@ -731,52 +713,9 @@ export default function Home() {
           </h2>
         </div>
 
-        {/* Mini Solar System — centered SVG */}
+        {/* 3D Solar System — canvas-based with tilted orbits */}
         <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 1, pointerEvents: 'none' }}>
-        <svg viewBox="0 0 600 600" width="520" height="520">
-          {/* Orbit rings */}
-          <ellipse cx="300" cy="300" rx="90" ry="90" fill="none" stroke={theme.accent} strokeWidth="0.6" opacity="0.12" />
-          <ellipse cx="300" cy="300" rx="145" ry="145" fill="none" stroke={theme.accent} strokeWidth="0.6" opacity="0.10" />
-          <ellipse cx="300" cy="300" rx="210" ry="210" fill="none" stroke={theme.accent} strokeWidth="0.6" opacity="0.08" />
-          <ellipse cx="300" cy="300" rx="270" ry="270" fill="none" stroke={theme.accent} strokeWidth="0.5" opacity="0.06" strokeDasharray="4 3" />
-
-          {/* Sun — layered glow */}
-          <circle cx="300" cy="300" r="42" fill={theme.accent} opacity="0.06" />
-          <circle cx="300" cy="300" r="30" fill={theme.accent} opacity="0.12" />
-          <circle cx="300" cy="300" r="20" fill={theme.accent} opacity="0.25" />
-          <circle cx="300" cy="300" r="12" fill={theme.accent} opacity="0.7" />
-          <circle cx="300" cy="300" r="7" fill={theme.fg} opacity="0.9" />
-
-          {/* Solar wind / CME — wavy rays going left */}
-          <path d="M270,290 Q240,280 200,270 Q170,262 130,258" fill="none" stroke={theme.accent} strokeWidth="2" opacity="0.35" strokeLinecap="round" />
-          <path d="M268,300 Q235,300 195,298 Q160,296 125,290" fill="none" stroke={theme.accent} strokeWidth="2.5" opacity="0.25" strokeLinecap="round" />
-          <path d="M270,310 Q240,320 200,330 Q170,338 135,345" fill="none" stroke={theme.accent} strokeWidth="1.5" opacity="0.30" strokeLinecap="round" />
-          <path d="M272,280 Q250,265 220,248 Q195,235 160,220" fill="none" stroke={theme.accent} strokeWidth="1" opacity="0.20" strokeLinecap="round" />
-          <path d="M272,320 Q255,340 235,355 Q215,370 185,385" fill="none" stroke={theme.accent} strokeWidth="1" opacity="0.18" strokeLinecap="round" />
-          {/* Particle dots in wind */}
-          <circle cx="180" cy="265" r="1.5" fill={theme.accent} opacity="0.4" />
-          <circle cx="155" cy="280" r="1" fill={theme.accent} opacity="0.3" />
-          <circle cx="200" cy="310" r="1.5" fill={theme.accent} opacity="0.35" />
-          <circle cx="165" cy="335" r="1" fill={theme.accent} opacity="0.25" />
-
-          {/* Planets on orbits */}
-          <circle cx="390" cy="300" r="6" fill="#5588cc" opacity="0.7" /> {/* Earth */}
-          <circle cx="389" cy="300" r="9" fill="#5588cc" opacity="0.12" /> {/* Earth atmosphere */}
-          <circle cx="300" cy="155" r="4" fill="#cc8844" opacity="0.5" /> {/* Mars */}
-          <circle cx="210" cy="300" r="3" fill="#aaa" opacity="0.4" /> {/* Mercury */}
-          <circle cx="345" cy="185" r="3.5" fill="#ddcc88" opacity="0.4" /> {/* Venus */}
-
-          {/* Asteroid + trail — upper right area */}
-          <polygon points="475,175 483,168 490,174 486,183 478,182" fill={theme.accent} opacity="0.7" />
-          <circle cx="470" cy="180" r="2" fill={theme.accent} opacity="0.3" />
-          <circle cx="464" cy="184" r="1.2" fill={theme.accent} opacity="0.2" />
-          {/* Asteroid trail */}
-          <path d="M490,174 Q505,168 525,160" fill="none" stroke={theme.accent} strokeWidth="1" opacity="0.2" strokeDasharray="2 3" />
-          <path d="M486,183 Q498,188 515,195" fill="none" stroke={theme.accent} strokeWidth="0.8" opacity="0.15" strokeDasharray="2 3" />
-
-          {/* Label: "EARTH" near the blue planet */}
-          <text x="400" y="326" fill={theme.fgMuted} fontSize="8" fontFamily={mono} letterSpacing="2" textAnchor="middle">EARTH</text>
-        </svg>
+          <SolarSystem size={540} opacity={0.9} />
         </div>
 
         {/* SVG connector lines — from bubbles to solar system features */}
@@ -828,82 +767,9 @@ export default function Home() {
           </h2>
         </div>
 
-        {/* Milky Way Galaxy — centered SVG */}
+        {/* Milky Way Galaxy — canvas-based particle spiral */}
         <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 1, pointerEvents: 'none' }}>
-        <svg viewBox="0 0 600 600" width="540" height="540">
-          {/* Galaxy core — bright central bulge */}
-          <circle cx="300" cy="300" r="70" fill={theme.accent} opacity="0.03" />
-          <circle cx="300" cy="300" r="45" fill={theme.accent} opacity="0.06" />
-          <circle cx="300" cy="300" r="28" fill={theme.accent} opacity="0.12" />
-          <circle cx="300" cy="300" r="16" fill={theme.accent} opacity="0.3" />
-          <circle cx="300" cy="300" r="7" fill={theme.fg} opacity="0.7" />
-
-          {/* Spiral arm 1 — upper right */}
-          <path d="M315,288 Q355,255 395,215 Q425,180 445,135 Q460,95 435,65" fill="none" stroke={theme.accent} strokeWidth="22" opacity="0.035" strokeLinecap="round" />
-          <path d="M315,288 Q355,255 395,215 Q425,180 445,135 Q460,95 435,65" fill="none" stroke={theme.accent} strokeWidth="8" opacity="0.07" strokeLinecap="round" />
-
-          {/* Spiral arm 1 opposite — lower left */}
-          <path d="M285,312 Q245,345 205,385 Q175,420 155,465 Q140,505 165,535" fill="none" stroke={theme.accent} strokeWidth="22" opacity="0.035" strokeLinecap="round" />
-          <path d="M285,312 Q245,345 205,385 Q175,420 155,465 Q140,505 165,535" fill="none" stroke={theme.accent} strokeWidth="8" opacity="0.07" strokeLinecap="round" />
-
-          {/* Spiral arm 2 — lower right */}
-          <path d="M312,315 Q345,355 380,395 Q410,425 450,445 Q490,460 530,440" fill="none" stroke={theme.accent} strokeWidth="20" opacity="0.03" strokeLinecap="round" />
-          <path d="M312,315 Q345,355 380,395 Q410,425 450,445 Q490,460 530,440" fill="none" stroke={theme.accent} strokeWidth="7" opacity="0.06" strokeLinecap="round" />
-
-          {/* Spiral arm 2 opposite — upper left */}
-          <path d="M288,285 Q255,245 220,205 Q190,175 150,155 Q110,140 70,160" fill="none" stroke={theme.accent} strokeWidth="20" opacity="0.03" strokeLinecap="round" />
-          <path d="M288,285 Q255,245 220,205 Q190,175 150,155 Q110,140 70,160" fill="none" stroke={theme.accent} strokeWidth="7" opacity="0.06" strokeLinecap="round" />
-
-          {/* Stars along arm 1 */}
-          <circle cx="365" cy="240" r="1.5" fill={theme.accent} opacity="0.4" />
-          <circle cx="405" cy="195" r="1" fill={theme.fg} opacity="0.3" />
-          <circle cx="430" cy="155" r="1.5" fill={theme.accent} opacity="0.35" />
-          <circle cx="448" cy="110" r="1" fill={theme.fg} opacity="0.2" />
-
-          {/* Stars along arm 1 opposite */}
-          <circle cx="235" cy="360" r="1.5" fill={theme.accent} opacity="0.4" />
-          <circle cx="195" cy="405" r="1" fill={theme.fg} opacity="0.3" />
-          <circle cx="170" cy="450" r="1.5" fill={theme.accent} opacity="0.3" />
-          <circle cx="158" cy="490" r="1" fill={theme.fg} opacity="0.2" />
-
-          {/* Stars along arm 2 */}
-          <circle cx="360" cy="375" r="1" fill={theme.fg} opacity="0.3" />
-          <circle cx="420" cy="430" r="1.5" fill={theme.accent} opacity="0.3" />
-          <circle cx="470" cy="450" r="1" fill={theme.fg} opacity="0.25" />
-          <circle cx="510" cy="442" r="1.5" fill={theme.accent} opacity="0.25" />
-
-          {/* Stars along arm 2 opposite */}
-          <circle cx="240" cy="225" r="1" fill={theme.fg} opacity="0.3" />
-          <circle cx="185" cy="172" r="1.5" fill={theme.accent} opacity="0.3" />
-          <circle cx="135" cy="152" r="1" fill={theme.fg} opacity="0.25" />
-          <circle cx="95" cy="158" r="1.5" fill={theme.accent} opacity="0.25" />
-
-          {/* Random field stars */}
-          <circle cx="145" cy="110" r="0.7" fill={theme.fg} opacity="0.18" />
-          <circle cx="490" cy="95" r="0.7" fill={theme.fg} opacity="0.14" />
-          <circle cx="530" cy="270" r="0.7" fill={theme.fg} opacity="0.18" />
-          <circle cx="75" cy="390" r="0.7" fill={theme.fg} opacity="0.14" />
-          <circle cx="510" cy="510" r="0.7" fill={theme.fg} opacity="0.16" />
-          <circle cx="95" cy="490" r="0.7" fill={theme.fg} opacity="0.14" />
-          <circle cx="410" cy="530" r="0.7" fill={theme.fg} opacity="0.16" />
-          <circle cx="195" cy="75" r="0.7" fill={theme.fg} opacity="0.14" />
-          <circle cx="490" cy="340" r="0.7" fill={theme.fg} opacity="0.15" />
-          <circle cx="115" cy="255" r="0.7" fill={theme.fg} opacity="0.15" />
-          <circle cx="350" cy="85" r="0.7" fill={theme.fg} opacity="0.12" />
-          <circle cx="550" cy="180" r="0.7" fill={theme.fg} opacity="0.12" />
-          <circle cx="55" cy="300" r="0.7" fill={theme.fg} opacity="0.12" />
-          <circle cx="300" cy="540" r="0.7" fill={theme.fg} opacity="0.12" />
-
-          {/* "You are here" — solar system marker on arm 1 */}
-          <circle cx="385" cy="225" r="6" fill="none" stroke={theme.accent} strokeWidth="1" opacity="0.4" strokeDasharray="2 2" />
-          <circle cx="385" cy="225" r="2.5" fill={theme.accent} opacity="0.6" />
-          <text x="385" y="212" fill={theme.accent} fontSize="7" fontFamily={mono} letterSpacing="2" textAnchor="middle" opacity="0.6">YOU ARE HERE</text>
-
-          {/* Exoplanet highlight — on opposite arm */}
-          <circle cx="210" cy="380" r="4" fill="#5588cc" opacity="0.6" />
-          <circle cx="210" cy="380" r="7" fill="#5588cc" opacity="0.12" />
-          <circle cx="210" cy="380" r="11" fill="#5588cc" opacity="0.05" />
-        </svg>
+          <SpiralGalaxy size={560} opacity={0.85} />
         </div>
 
         {/* SVG connector lines */}
