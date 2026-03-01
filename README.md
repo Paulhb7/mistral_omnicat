@@ -118,40 +118,59 @@ These shortcuts allowed us to create theatrical, engaging transitions during the
 - **NASA Incoming Call**: Asteroid mission briefing popup (`Cmd+Shift+N`)
 - **Vader Incoming Call**: Dark side exoplanet intelligence popup (`Cmd+Shift+V`)
 
-## Installation
+## Quick Start
 
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- AWS account with Bedrock access
-- AISStream API key (free via [aisstream.io](https://aisstream.io))
+- AWS account with Bedrock access (Mistral models)
 
-### Steps
+### 1. Install & configure
 
-1. Clone the repository:
 ```bash
 git clone https://github.com/Paulhb7/mistral_wwh_aristocats.git
 cd mistral_wwh_aristocats
+make install
 ```
 
-2. Configure the environment:
+This will create a `.env` file from the template and install all dependencies (backend + frontend).
+
+### 2. Set up your API keys
+
+> **Important:** You must configure your API keys in `.env` before starting the app.
+
+Edit the `.env` file and fill in your credentials:
+
+| Variable | Where to get it | Required |
+|----------|----------------|----------|
+| `AWS_BEARER_TOKEN_BEDROCK` | [AWS Bedrock Console](https://console.aws.amazon.com/bedrock) | Yes |
+| `AWS_DEFAULT_REGION` | AWS region with Mistral models (`us-east-1` recommended) | Yes |
+| `MISTRAL_API_KEY` | [Mistral AI Console](https://console.mistral.ai/) | Yes (voice mode) |
+| `ELEVENLABS_API_KEY` | [ElevenLabs Dashboard](https://elevenlabs.io/) | Yes (voice mode) |
+| `ELEVENLABS_VOICE_ID` | ElevenLabs voice library | Optional (defaults to custom "Omni" voice) |
+| `AISSTREAM_API_KEY` | [aisstream.io](https://aisstream.io) (free, GitHub login) | Yes (maritime) |
+| `ACLED_USERNAME` / `ACLED_PASSWORD` | [ACLED Access](https://acleddata.com/register/) | Optional (conflict data) |
+| `PERPLEXITY_API_KEY` | [Perplexity AI](https://perplexity.ai/) | Optional (live search fallback) |
+
+### 3. Start
+
 ```bash
-cp .env.example .env
-# Edit .env with your API keys
+make start
 ```
 
-3. Install and start the backend:
-```bash
-cd backend
-pip install -r requirements.txt
-python server.py  # http://localhost:8000
-```
+- Backend → http://localhost:8000
+- Frontend → http://localhost:3000
 
-4. Install and start the frontend (in a separate terminal):
-```bash
-cd frontend
-npm install
-npm run dev  # http://localhost:3000
+### All Makefile commands
+
+```
+make install          # Install everything (backend + frontend + .env)
+make start            # Start backend & frontend
+make start-backend    # Start FastAPI server only
+make start-frontend   # Start Next.js dev server only
+make test             # Run backend tests
+make clean            # Remove generated files
+make help             # Show all commands
 ```
 
 ## Usage
