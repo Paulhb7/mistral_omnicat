@@ -13,7 +13,7 @@ import { MicWaveform } from '@/components/mic-waveform';
 import { JarvisLoader } from '@/components/jarvis-loader';
 import { NasaCallPopup } from '@/components/nasa-call-popup';
 import { VaderCallPopup } from '@/components/vader-call-popup';
-import { sfxActivate, sfxDeactivate, sfxListening, sfxSubmit, sfxSpeakStart, sfxComplete, sfxIncomingCall, sfxBargeIn } from '@/utils/sfx';
+import { sfxActivate, sfxDeactivate, sfxListening, sfxSubmit, sfxSpeakStart, sfxComplete, sfxIncomingCall, sfxBargeIn, sfxTypingStart, sfxTypingStop } from '@/utils/sfx';
 
 const EarthMap = dynamic(() => import('@/components/earth-map'), { ssr: false });
 
@@ -640,6 +640,14 @@ export default function IntelPage() {
       else setStatusText('READY');
     }
   }, [isLoading, location, panelData, agentMode, tools.length]);
+
+  // ── Typing SFX while agent works ────────────────────────────────────────────
+
+  useEffect(() => {
+    if (isLoading) sfxTypingStart();
+    else sfxTypingStop();
+    return () => sfxTypingStop();
+  }, [isLoading]);
 
   // ── Show briefing panel when briefing arrives ──────────────────────────────
 

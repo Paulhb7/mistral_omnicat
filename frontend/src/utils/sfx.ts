@@ -203,6 +203,71 @@ export function sfxBargeIn() {
   hudTone(700, 0.025, 0.005, 0.02, 0.1);
 }
 
+// ── Typing loop — simulated keyboard while agent works ──────────────────
+
+let _typingActive = false;
+
+/** Start a looping keyboard-typing sound (call sfxTypingStop to end). */
+export function sfxTypingStart() {
+  if (_typingActive) return;
+  _typingActive = true;
+
+  const loop = () => {
+    if (!_typingActive) return;
+    const c = ctx();
+    const t = c.currentTime;
+
+    // Random key click: short noise burst
+    const freq = 2000 + Math.random() * 3000;
+    const vol = 0.15 + Math.random() * 0.10;
+
+    // Noise click — short percussive burst
+    const len = Math.floor(c.sampleRate * 0.022);
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = freq;
+    bp.Q.value = 2;
+
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+
+    src.connect(bp);
+    bp.connect(g);
+    g.connect(c.destination);
+    src.start(t);
+    src.stop(t + 0.04);
+
+    // Mechanical click tone
+    const osc = c.createOscillator();
+    osc.type = 'square';
+    osc.frequency.value = 400 + Math.random() * 300;
+    const g2 = c.createGain();
+    g2.gain.setValueAtTime(vol * 0.4, t);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.02);
+    osc.connect(g2);
+    g2.connect(c.destination);
+    osc.start(t);
+    osc.stop(t + 0.025);
+
+    // Schedule next keystroke with random delay
+    setTimeout(loop, 50 + Math.random() * 100);
+  };
+
+  loop();
+}
+
+/** Stop the typing sound loop. */
+export function sfxTypingStop() {
+  _typingActive = false;
+}
+
 /** Briefing complete — ascending triad: clean C-E-G */
 export function sfxComplete() {
   hudTone(523, 0.04, 0.005, 0.06, 0.3);          // C5
