@@ -19,7 +19,7 @@ export default function Home() {
 
   // ── Slide state ────────────────────────────────────────────────────────
   const [currentSlide, setCurrentSlide] = useState(0);
-  const totalSlides = 3;
+  const totalSlides = 6;
   const goToSlide = useCallback((idx: number) => {
     setCurrentSlide(Math.max(0, Math.min(totalSlides - 1, idx)));
   }, []);
@@ -312,7 +312,7 @@ export default function Home() {
         background: `radial-gradient(ellipse 60% 40% at 10% 0%, ${theme.glow} 0%, transparent 60%)`,
       }} />
 
-      {/* Wireframe globe — decorative, right side */}
+      {/* Wireframe globe — decorative, right side (slides 0-1) */}
       <div aria-hidden style={{
         position: 'fixed', zIndex: 1, pointerEvents: 'none',
         right: '-5vw', top: '50%', transform: 'translateY(-50%)',
@@ -320,6 +320,16 @@ export default function Home() {
         opacity: currentSlide <= 1 ? 1 : 0,
       }}>
         <OrangeGlobe size={680} opacity={0.22} />
+      </div>
+
+      {/* Wireframe globe — centered (slides 3-5) */}
+      <div aria-hidden style={{
+        position: 'fixed', zIndex: 1, pointerEvents: 'none',
+        left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+        transition: 'opacity 0.8s ease',
+        opacity: currentSlide >= 3 ? 1 : 0,
+      }}>
+        <OrangeGlobe size={520} opacity={0.35} />
       </div>
 
       {/* ── Navigation dots ─────────────────────────────────────────────── */}
@@ -628,6 +638,175 @@ export default function Home() {
                 {q}
               </button>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          SLIDE 3 — Earth Intelligence
+          ════════════════════════════════════════════════════════════════════ */}
+      <div style={slideStyle(3)}>
+        {/* Title */}
+        <div style={{ position: 'absolute', top: 56, left: 0, right: 0, textAlign: 'center', zIndex: 2 }}>
+          <div style={{ fontSize: 9, letterSpacing: 4, color: theme.accent, fontFamily: mono, textTransform: 'uppercase', marginBottom: 8 }}>
+            What Omni can do
+          </div>
+          <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, letterSpacing: '-0.03em' }}>
+            <span style={{ color: theme.accent }}>Earth</span> Intelligence
+          </h2>
+        </div>
+
+        {/* SVG connector lines */}
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}>
+          <line x1="24%" y1="32%" x2="40%" y2="44%" stroke={theme.accent} strokeWidth="1" strokeDasharray="4 4" opacity="0.3" />
+          <circle cx="40%" cy="44%" r="3" fill={theme.accent} opacity="0.4" />
+          <line x1="76%" y1="32%" x2="60%" y2="44%" stroke={theme.accent} strokeWidth="1" strokeDasharray="4 4" opacity="0.3" />
+          <circle cx="60%" cy="44%" r="3" fill={theme.accent} opacity="0.4" />
+          <line x1="24%" y1="68%" x2="40%" y2="56%" stroke={theme.accent} strokeWidth="1" strokeDasharray="4 4" opacity="0.3" />
+          <circle cx="40%" cy="56%" r="3" fill={theme.accent} opacity="0.4" />
+          <line x1="76%" y1="68%" x2="60%" y2="56%" stroke={theme.accent} strokeWidth="1" strokeDasharray="4 4" opacity="0.3" />
+          <circle cx="60%" cy="56%" r="3" fill={theme.accent} opacity="0.4" />
+        </svg>
+
+        {/* Bubbles — top-left: Maritime */}
+        <div style={{ position: 'absolute', left: '5%', top: '22%', width: 240, zIndex: 3, padding: '16px 18px', border: `1px solid ${theme.accent}30`, background: `${theme.bg}dd`, backdropFilter: 'blur(8px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 20 }}>{'\uD83D\uDEA2'}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.5 }}>Maritime</span>
+          </div>
+          <div style={{ fontSize: 11, color: theme.fgDim, lineHeight: 1.5, marginBottom: 8 }}>Vessel tracking & AIS data worldwide in real-time</div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {['AISStream', 'SQLite'].map(s => <span key={s} style={{ fontSize: 7, letterSpacing: 1, padding: '2px 7px', border: `1px solid ${theme.accent}30`, color: theme.accent, fontFamily: mono, textTransform: 'uppercase' }}>{s}</span>)}
+          </div>
+        </div>
+
+        {/* top-right: Aviation */}
+        <div style={{ position: 'absolute', right: '5%', top: '22%', width: 240, zIndex: 3, padding: '16px 18px', border: `1px solid ${theme.accent}30`, background: `${theme.bg}dd`, backdropFilter: 'blur(8px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 20 }}>{'\u2708\uFE0F'}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.5 }}>Aviation</span>
+          </div>
+          <div style={{ fontSize: 11, color: theme.fgDim, lineHeight: 1.5, marginBottom: 8 }}>Flight tracking, aircraft identification & route monitoring</div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {['OpenSky', 'ADS-B'].map(s => <span key={s} style={{ fontSize: 7, letterSpacing: 1, padding: '2px 7px', border: `1px solid ${theme.accent}30`, color: theme.accent, fontFamily: mono, textTransform: 'uppercase' }}>{s}</span>)}
+          </div>
+        </div>
+
+        {/* bottom-left: Doomsday */}
+        <div style={{ position: 'absolute', left: '5%', bottom: '22%', width: 240, zIndex: 3, padding: '16px 18px', border: `1px solid ${theme.accent}30`, background: `${theme.bg}dd`, backdropFilter: 'blur(8px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 20 }}>{'\uD83D\uDC80'}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.5 }}>Doomsday</span>
+          </div>
+          <div style={{ fontSize: 11, color: theme.fgDim, lineHeight: 1.5, marginBottom: 8 }}>Earthquakes, wildfires, storms & natural disasters</div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {['NASA EONET', 'USGS'].map(s => <span key={s} style={{ fontSize: 7, letterSpacing: 1, padding: '2px 7px', border: `1px solid ${theme.accent}30`, color: theme.accent, fontFamily: mono, textTransform: 'uppercase' }}>{s}</span>)}
+          </div>
+        </div>
+
+        {/* bottom-right: Conflict */}
+        <div style={{ position: 'absolute', right: '5%', bottom: '22%', width: 240, zIndex: 3, padding: '16px 18px', border: `1px solid ${theme.accent}30`, background: `${theme.bg}dd`, backdropFilter: 'blur(8px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 20 }}>{'\u2694\uFE0F'}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.5 }}>Conflict</span>
+          </div>
+          <div style={{ fontSize: 11, color: theme.fgDim, lineHeight: 1.5, marginBottom: 8 }}>Armed conflicts, political violence & breaking news</div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {['ACLED', 'GDELT'].map(s => <span key={s} style={{ fontSize: 7, letterSpacing: 1, padding: '2px 7px', border: `1px solid ${theme.accent}30`, color: theme.accent, fontFamily: mono, textTransform: 'uppercase' }}>{s}</span>)}
+          </div>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          SLIDE 4 — Solar System Watch
+          ════════════════════════════════════════════════════════════════════ */}
+      <div style={slideStyle(4)}>
+        {/* Title */}
+        <div style={{ position: 'absolute', top: 56, left: 0, right: 0, textAlign: 'center', zIndex: 2 }}>
+          <div style={{ fontSize: 9, letterSpacing: 4, color: theme.accent, fontFamily: mono, textTransform: 'uppercase', marginBottom: 8 }}>
+            What Omni can do
+          </div>
+          <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, letterSpacing: '-0.03em' }}>
+            <span style={{ color: theme.accent }}>Solar System</span> Watch
+          </h2>
+        </div>
+
+        {/* SVG connector lines */}
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}>
+          <line x1="27%" y1="50%" x2="40%" y2="50%" stroke={theme.accent} strokeWidth="1" strokeDasharray="4 4" opacity="0.3" />
+          <circle cx="40%" cy="50%" r="3" fill={theme.accent} opacity="0.4" />
+          <line x1="73%" y1="50%" x2="60%" y2="50%" stroke={theme.accent} strokeWidth="1" strokeDasharray="4 4" opacity="0.3" />
+          <circle cx="60%" cy="50%" r="3" fill={theme.accent} opacity="0.4" />
+        </svg>
+
+        {/* left: Solar Flares */}
+        <div style={{ position: 'absolute', left: '4%', top: '50%', transform: 'translateY(-50%)', width: 260, zIndex: 3, padding: '20px 22px', border: `1px solid ${theme.accent}30`, background: `${theme.bg}dd`, backdropFilter: 'blur(8px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span style={{ fontSize: 24 }}>{'\uD83C\uDF1E'}</span>
+            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 0.5 }}>Solar Flares</span>
+          </div>
+          <div style={{ fontSize: 12, color: theme.fgDim, lineHeight: 1.5, marginBottom: 10 }}>Real-time detection of solar flares and coronal mass ejections that can disrupt communications</div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <span style={{ fontSize: 7, letterSpacing: 1, padding: '2px 7px', border: `1px solid ${theme.accent}30`, color: theme.accent, fontFamily: mono, textTransform: 'uppercase' }}>NASA DONKI</span>
+          </div>
+        </div>
+
+        {/* right: Near-Earth Objects */}
+        <div style={{ position: 'absolute', right: '4%', top: '50%', transform: 'translateY(-50%)', width: 260, zIndex: 3, padding: '20px 22px', border: `1px solid ${theme.accent}30`, background: `${theme.bg}dd`, backdropFilter: 'blur(8px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span style={{ fontSize: 24 }}>{'\u2604\uFE0F'}</span>
+            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 0.5 }}>Near-Earth Objects</span>
+          </div>
+          <div style={{ fontSize: 12, color: theme.fgDim, lineHeight: 1.5, marginBottom: 10 }}>Track asteroids and comets approaching Earth with risk assessment and trajectory data</div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <span style={{ fontSize: 7, letterSpacing: 1, padding: '2px 7px', border: `1px solid ${theme.accent}30`, color: theme.accent, fontFamily: mono, textTransform: 'uppercase' }}>NASA NeoWs</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          SLIDE 5 — Galaxy Explorer
+          ════════════════════════════════════════════════════════════════════ */}
+      <div style={slideStyle(5)}>
+        {/* Title */}
+        <div style={{ position: 'absolute', top: 56, left: 0, right: 0, textAlign: 'center', zIndex: 2 }}>
+          <div style={{ fontSize: 9, letterSpacing: 4, color: theme.accent, fontFamily: mono, textTransform: 'uppercase', marginBottom: 8 }}>
+            What Omni can do
+          </div>
+          <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, letterSpacing: '-0.03em' }}>
+            <span style={{ color: theme.accent }}>Galaxy</span> Explorer
+          </h2>
+        </div>
+
+        {/* SVG connector lines */}
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}>
+          <line x1="27%" y1="50%" x2="40%" y2="50%" stroke={theme.accent} strokeWidth="1" strokeDasharray="4 4" opacity="0.3" />
+          <circle cx="40%" cy="50%" r="3" fill={theme.accent} opacity="0.4" />
+          <line x1="73%" y1="50%" x2="60%" y2="50%" stroke={theme.accent} strokeWidth="1" strokeDasharray="4 4" opacity="0.3" />
+          <circle cx="60%" cy="50%" r="3" fill={theme.accent} opacity="0.4" />
+        </svg>
+
+        {/* left: Exoplanets */}
+        <div style={{ position: 'absolute', left: '4%', top: '50%', transform: 'translateY(-50%)', width: 260, zIndex: 3, padding: '20px 22px', border: `1px solid ${theme.accent}30`, background: `${theme.bg}dd`, backdropFilter: 'blur(8px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span style={{ fontSize: 24 }}>{'\uD83E\uDE90'}</span>
+            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 0.5 }}>Exoplanets</span>
+          </div>
+          <div style={{ fontSize: 12, color: theme.fgDim, lineHeight: 1.5, marginBottom: 10 }}>Query NASA&apos;s catalog of confirmed exoplanets with orbital parameters and habitability metrics</div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <span style={{ fontSize: 7, letterSpacing: 1, padding: '2px 7px', border: `1px solid ${theme.accent}30`, color: theme.accent, fontFamily: mono, textTransform: 'uppercase' }}>Exoplanet Archive</span>
+          </div>
+        </div>
+
+        {/* right: Research Papers */}
+        <div style={{ position: 'absolute', right: '4%', top: '50%', transform: 'translateY(-50%)', width: 260, zIndex: 3, padding: '20px 22px', border: `1px solid ${theme.accent}30`, background: `${theme.bg}dd`, backdropFilter: 'blur(8px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span style={{ fontSize: 24 }}>{'\uD83D\uDCDA'}</span>
+            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 0.5 }}>Research Papers</span>
+          </div>
+          <div style={{ fontSize: 12, color: theme.fgDim, lineHeight: 1.5, marginBottom: 10 }}>Search and summarize the latest astrophysics papers from arXiv with citation analysis</div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <span style={{ fontSize: 7, letterSpacing: 1, padding: '2px 7px', border: `1px solid ${theme.accent}30`, color: theme.accent, fontFamily: mono, textTransform: 'uppercase' }}>arXiv</span>
           </div>
         </div>
       </div>
