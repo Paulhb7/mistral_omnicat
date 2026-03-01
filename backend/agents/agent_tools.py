@@ -88,10 +88,12 @@ def conflict_analyst(query: str) -> str:
 
 @tool
 def solar_system_analyst(query: str) -> str:
-    """Monitor space weather, solar flares, and near-Earth objects.
+    """Monitor space weather, solar flares, near-Earth asteroids, and geomagnetic storms.
 
     Use this tool for anything related to: solar flares, sun activity, geomagnetic storms,
-    asteroids, near-Earth objects, space weather, GPS/communication disruption risks, NEO tracking.
+    space weather, GPS/communication disruption risks, asteroids, near-Earth objects, NEOs,
+    comets, impact risk, planetary defense, asteroid tracking.
+    NEVER use this for exoplanets (use milky_way_analyst instead).
 
     Args:
         query: The space weather or near-Earth object question to analyze.

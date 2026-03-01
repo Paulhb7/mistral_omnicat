@@ -33,7 +33,11 @@ const SOLAR_DEFAULT = `${SOLAR_URL}#/earth${UI_Q}`;
 const EXO_URL = 'https://eyes.nasa.gov/apps/exo/';
 const EXO_DEFAULT = `${EXO_URL}#/?embed=true`;
 
-type MapView = 'earth' | 'solar' | 'exo' | null;
+// NASA Eyes on Asteroids
+const ASTEROIDS_URL = 'https://eyes.nasa.gov/apps/asteroids/';
+const ASTEROIDS_DEFAULT = `${ASTEROIDS_URL}#/home`;
+
+type MapView = 'earth' | 'solar' | 'exo' | 'asteroids' | null;
 
 // ── Celestial body detection ─────────────────────────────────────────────────
 // keyword → NASA Eyes hash route (planets, moons, spacecraft)
@@ -66,70 +70,16 @@ function detectCelestial(q: string): { id: string; label: string } | null {
   return null;
 }
 
-// ── Exoplanet detection → NASA Eyes on Exoplanets ──────────────────────────
-// Each entry: [keyword, exact Eyes route ID, display label, type]
-// Route IDs verified against the NASA Eyes on Exoplanets JS bundle.
+// ── Asteroid / NEO keyword detection ────────────────────────────────────────
 
-const EXOPLANETS: [string, string, string, 'planet' | 'system'][] = [
-  // TRAPPIST-1
-  ['trappist-1e',   'TRAPPIST-1_e',               'TRAPPIST-1 E',       'planet'],
-  ['trappist-1 e',  'TRAPPIST-1_e',               'TRAPPIST-1 E',       'planet'],
-  ['trappist-1d',   'TRAPPIST-1_d',               'TRAPPIST-1 D',       'planet'],
-  ['trappist-1 d',  'TRAPPIST-1_d',               'TRAPPIST-1 D',       'planet'],
-  ['trappist-1b',   'TRAPPIST-1_b',               'TRAPPIST-1 B',       'planet'],
-  ['trappist-1 b',  'TRAPPIST-1_b',               'TRAPPIST-1 B',       'planet'],
-  ['trappist-1f',   'TRAPPIST-1_f',               'TRAPPIST-1 F',       'planet'],
-  ['trappist-1 f',  'TRAPPIST-1_f',               'TRAPPIST-1 F',       'planet'],
-  ['trappist-1',    'TRAPPIST-1',                  'TRAPPIST-1',         'system'],
-  ['trappist',      'TRAPPIST-1',                  'TRAPPIST-1',         'system'],
-  // Kepler
-  ['kepler-442b',   'Kepler-442_b',                'KEPLER-442 B',       'planet'],
-  ['kepler-442 b',  'Kepler-442_b',                'KEPLER-442 B',       'planet'],
-  ['kepler-442',    'Kepler-442',                   'KEPLER-442',         'system'],
-  ['kepler-186f',   'Kepler-186_f',                'KEPLER-186 F',       'planet'],
-  ['kepler-186 f',  'Kepler-186_f',                'KEPLER-186 F',       'planet'],
-  ['kepler-186',    'Kepler-186',                   'KEPLER-186',         'system'],
-  ['kepler-22b',    'Kepler-22_b',                 'KEPLER-22 B',        'planet'],
-  ['kepler-22 b',   'Kepler-22_b',                 'KEPLER-22 B',        'planet'],
-  ['kepler-22',     'Kepler-22',                    'KEPLER-22',          'system'],
-  ['kepler-452b',   'Kepler-452_b',                'KEPLER-452 B',       'planet'],
-  ['kepler-452 b',  'Kepler-452_b',                'KEPLER-452 B',       'planet'],
-  ['kepler-452',    'Kepler-452',                   'KEPLER-452',         'system'],
-  // Proxima Centauri — Eyes uses full name with spaces (URL-encoded)
-  ['proxima centauri b', 'Proxima%20Centauri%20b',  'PROXIMA CENTAURI B', 'planet'],
-  ['proxima cen b',      'Proxima%20Centauri%20b',  'PROXIMA CENTAURI B', 'planet'],
-  ['proxima b',          'Proxima%20Centauri%20b',  'PROXIMA CENTAURI B', 'planet'],
-  ['proxima centauri',   'Proxima%20Centauri',      'PROXIMA CENTAURI',   'system'],
-  ['proxima cen',        'Proxima%20Centauri',      'PROXIMA CENTAURI',   'system'],
-  // Others — verified IDs from bundle
-  ['toi-700 d',     'TOI-700_d',                   'TOI-700 D',          'planet'],
-  ['toi-700',       'TOI-700',                      'TOI-700',            'system'],
-  ['55 cancri e',   '55_Cnc_e',                    '55 CANCRI E',        'planet'],
-  ['55 cnc e',      '55_Cnc_e',                    '55 CANCRI E',        'planet'],
-  ['55 cancri',     '55_Cnc',                       '55 CANCRI',          'system'],
-  ['hd 189733 b',   'HD_189733_b',                 'HD 189733 B',        'planet'],
-  ['hd 189733',     'HD_189733',                    'HD 189733',          'system'],
-  ['hd 209458 b',   'HD_209458_b',                 'HD 209458 B',        'planet'],
-  ['hd 209458',     'HD_209458',                    'HD 209458',          'system'],
-  ['wasp-39 b',     'WASP-39_b',                   'WASP-39 B',          'planet'],
-  ['wasp-39b',      'WASP-39_b',                   'WASP-39 B',          'planet'],
-  ['wasp-39',       'WASP-39',                      'WASP-39',            'system'],
-  ['wasp-121 b',    'WASP-121_b',                  'WASP-121 B',         'planet'],
-  ['wasp-121b',     'WASP-121_b',                  'WASP-121 B',         'planet'],
-  ['wasp-121',      'WASP-121',                     'WASP-121',           'system'],
-  ['k2-18b',        'K2-18_b',                     'K2-18 B',            'planet'],
-  ['k2-18 b',       'K2-18_b',                     'K2-18 B',            'planet'],
-  ['k2-18',         'K2-18',                        'K2-18',              'system'],
-  ['51 pegasi b',   '51%20Pegasi%20b',             '51 PEGASI B',        'planet'],
-  ['51 pegasi',     '51%20Pegasi',                  '51 PEGASI',          'system'],
+const ASTEROID_KW = [
+  'asteroid', 'asteroids', 'asteroïde', 'asteroïdes', 'astéroïde', 'astéroïdes',
+  'near-earth object', 'near earth object', 'neos', 'neo ',
 ];
 
-function detectExoplanet(q: string): { route: string; label: string; type: 'planet' | 'system' } | null {
+function detectAsteroid(q: string): boolean {
   const low = q.toLowerCase();
-  for (const [kw, route, label, type] of EXOPLANETS) {
-    if (low.includes(kw)) return { route, label, type };
-  }
-  return null;
+  return ASTEROID_KW.some(kw => low.includes(kw));
 }
 
 const TOOL_LABELS: Record<string, string> = {
@@ -190,6 +140,7 @@ export default function IntelPage() {
   const inpRef = useRef<HTMLInputElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const exoIframeRef = useRef<HTMLIFrameElement>(null);
+  const asteroidsIframeRef = useRef<HTMLIFrameElement>(null);
 
   const { send, reset, isLoading, briefing, location, tools, panelData, error, agentMode } = useChat();
   const { theme, themeKey, toggle: toggleTheme } = useTheme();
@@ -614,18 +565,15 @@ export default function IntelPage() {
     setStatusText('ROUTING . . .');
     setBriefingVisible(false);
 
-    // Detect exoplanet / system → switch to Eyes on Exoplanets
-    const exo = detectExoplanet(text);
-    if (exo) {
-      setMapAgent('exo');
-      setModeText(`MILKY WAY · ${exo.label}`);
-      const url = `${EXO_URL}#/${exo.type}/${exo.route}`;
-      try { exoIframeRef.current?.contentWindow?.location.replace(url); }
-      catch { if (exoIframeRef.current) exoIframeRef.current.src = url; }
+    // Detect asteroid / NEO → switch to Eyes on Asteroids
+    const isAsteroid = detectAsteroid(text);
+    if (isAsteroid) {
+      setMapAgent('asteroids');
+      setModeText('ASTEROIDS · NEAR-EARTH OBJECTS');
     }
 
     // Detect celestial body — fly directly to planet, moon, or spacecraft
-    if (!exo) {
+    if (!isAsteroid) {
       const target = detectCelestial(text);
       if (target) {
         setMapAgent('solar');
@@ -654,7 +602,7 @@ export default function IntelPage() {
       setMapAgent(prev => prev === 'exo' ? prev : 'exo');
       setModeText(prev => prev.startsWith('MILKY WAY') ? prev : 'MILKY WAY · EXOPLANETS');
     } else if (agentMode === 'solar_system') {
-      setMapAgent(prev => prev === 'solar' ? prev : 'solar');
+      setMapAgent(prev => (prev === 'solar' || prev === 'asteroids') ? prev : 'solar');
     } else if (agentMode !== null) {
       setMapAgent('earth');
     }
@@ -733,6 +681,20 @@ export default function IntelPage() {
           allow="fullscreen"
           allowFullScreen
           title="NASA Eyes on Exoplanets"
+        />
+      ) : mapAgent === 'asteroids' ? (
+        <iframe
+          ref={asteroidsIframeRef}
+          src={ASTEROIDS_DEFAULT}
+          style={{
+            position: 'fixed', top: 56, left: SIDEBAR_W,
+            width: showBriefingPanel ? `calc(100vw - ${SIDEBAR_W + BRIEF_W}px)` : `calc(100vw - ${SIDEBAR_W}px)`,
+            height: 'calc(100vh - 56px)', border: 'none', zIndex: 0,
+            display: 'block', transition: 'width 0.4s ease',
+          }}
+          allow="fullscreen"
+          allowFullScreen
+          title="NASA Eyes on Asteroids"
         />
       ) : (
         <iframe
